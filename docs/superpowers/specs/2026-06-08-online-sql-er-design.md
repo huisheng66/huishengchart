@@ -399,6 +399,7 @@ AI：
 - Mermaid ER 文档：适合作为 Crow's Foot ER 源码导出格式。
 - React Flow 文档：支持自定义节点、边、交互、布局集成和图片导出场景。
 - React Flow 布局文档：React Flow 官方建议使用外部布局库，ELK 支持节点布局和边路由。
+- 本项目参考仓库清单与 review：`docs/reference-repositories.md` 和 `docs/reference-review.md`。实施计划应优先参考 ChartDB 的 SQL 导入与图片导出、xyflow 的节点/边交互、erd-editor 的关系端点建模和自动摆放思路。
 
 ## 验收标准
 
@@ -412,4 +413,3 @@ MVP 完成时必须满足：
 - 真实外键和推断关系视觉区分清楚。
 - AI 不可用时仍能解析 SQL、生成图、编辑图、导出图和源码。
 - 能导出 PNG、SVG、Mermaid 源码、Markdown 数据字典。
-

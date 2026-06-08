@@ -1,4 +1,5 @@
 .superpowers/
+.reference-repos/
 node_modules/
 dist/
 build/
