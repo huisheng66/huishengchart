@@ -242,6 +242,7 @@ textarea {
   padding: 8px 14px;
   border: 2px solid #1d4ed8;
   background: #ffffff;
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -254,7 +255,8 @@ textarea {
   border: 2px solid #64748b;
   border-radius: 999px;
   background: #ffffff;
-  font-size: 12px;
+  font-size: 18px;
+  font-weight: 650;
 }
 
 .chen-node-label {
@@ -274,7 +276,7 @@ textarea {
 .chen-node-label__sub {
   color: #64748b;
   font-family: Consolas, "SFMono-Regular", monospace;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -307,7 +309,7 @@ textarea {
   transform: rotate(-45deg);
   overflow-wrap: anywhere;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -318,7 +320,7 @@ textarea {
   border-radius: 4px;
   color: #334155;
   background: #ffffff;
-  font-size: 11px;
+  font-size: 12px;
   pointer-events: all;
 }
 
