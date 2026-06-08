@@ -1,9 +1,9 @@
-import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getSmoothStepPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getSmoothStepPath, getStraightPath } from '@xyflow/react';
 import type { RelationshipEdgeData } from '../diagram/react-flow-types';
 
 export function RelationshipEdge(props: EdgeProps) {
-  const [edgePath, labelX, labelY] = getSmoothStepPath(props);
   const data = props.data as RelationshipEdgeData | undefined;
+  const [edgePath, labelX, labelY] = data?.edgeStyle === 'straight' ? getStraightPath(props) : getSmoothStepPath(props);
   const inferred = Boolean(data?.inferred);
 
   return (

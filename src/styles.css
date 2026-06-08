@@ -284,6 +284,14 @@ textarea {
   text-underline-offset: 3px;
 }
 
+.chen-handle {
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .chen-relationship {
   width: 112px;
   height: 112px;

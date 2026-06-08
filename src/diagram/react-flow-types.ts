@@ -22,6 +22,7 @@ export type RelationshipEdgeData = {
   relation?: RelationModel;
   label: string;
   inferred: boolean;
+  edgeStyle?: 'smooth' | 'straight';
 } & Record<string, unknown>;
 
 export type ErNode = Node<
@@ -34,4 +35,5 @@ export type ErEdge = Edge<RelationshipEdgeData, 'relationship'>;
 export type FlowGraph = {
   nodes: ErNode[];
   edges: ErEdge[];
+  layoutStrategy?: 'elk' | 'manual';
 };

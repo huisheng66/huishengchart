@@ -56,6 +56,10 @@ it('adapts the model to Crow Foot table nodes and bound relationship edges', () 
 
 it('adapts the model to Chen ER entity, attribute, and relationship nodes', () => {
   const graph = toChenFlow(parseMySqlToErModel(sql));
+  const studentEntity = getNode(graph.nodes, 'entity:student');
+  const majorEntity = getNode(graph.nodes, 'entity:major');
+  const studentAttributes = graph.nodes.filter((node) => node.id.startsWith('attribute:student:'));
+  const relationship = getNode(graph.nodes, 'relationship:student:major_id->major:id');
 
   expect(graph.nodes).toEqual(
     expect.arrayContaining([
@@ -79,4 +83,30 @@ it('adapts the model to Chen ER entity, attribute, and relationship nodes', () =
       }),
     ])
   );
+  expect(graph.layoutStrategy).toBe('manual');
+  expect(new Set(studentAttributes.map((node) => node.position.x)).size).toBeGreaterThan(1);
+  expect(new Set(studentAttributes.map((node) => node.position.y)).size).toBeGreaterThan(1);
+  expect(studentAttributes.every((node) => centerDistance(studentEntity, node) > 130)).toBe(true);
+  expect(centerDistance(studentEntity, relationship)).toBeLessThan(centerDistance(studentEntity, majorEntity));
+  expect(centerDistance(majorEntity, relationship)).toBeLessThan(centerDistance(studentEntity, majorEntity));
+  expect(graph.edges.filter((edge) => edge.source === 'entity:student').every((edge) => edge.data?.edgeStyle === 'straight')).toBe(true);
 });
+
+function getNode(nodes: ReturnType<typeof toChenFlow>['nodes'], id: string) {
+  const node = nodes.find((candidate) => candidate.id === id);
+  expect(node).toBeDefined();
+  return node!;
+}
+
+function centerDistance(left: ReturnType<typeof getNode>, right: ReturnType<typeof getNode>): number {
+  const leftCenter = {
+    x: left.position.x + (left.width ?? 0) / 2,
+    y: left.position.y + (left.height ?? 0) / 2,
+  };
+  const rightCenter = {
+    x: right.position.x + (right.width ?? 0) / 2,
+    y: right.position.y + (right.height ?? 0) / 2,
+  };
+
+  return Math.hypot(leftCenter.x - rightCenter.x, leftCenter.y - rightCenter.y);
+}

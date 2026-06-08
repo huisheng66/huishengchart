@@ -47,6 +47,13 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
     let cancelled = false;
 
     async function layoutInitialGraph() {
+      if (graph.layoutStrategy === 'manual') {
+        setNodes(graph.nodes);
+        setEdges(graph.edges);
+        fitAfterRender();
+        return;
+      }
+
       const layouted = await applyElkLayout(graph);
       if (!cancelled) {
         setNodes(layouted.nodes);
@@ -75,11 +82,18 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
   const edgeTypes = useMemo(() => ({ relationship: RelationshipEdge }), []);
 
   const autoLayout = useCallback(async () => {
+    if (graph.layoutStrategy === 'manual') {
+      setNodes(graph.nodes);
+      setEdges(graph.edges);
+      fitAfterRender();
+      return;
+    }
+
     const layouted = await applyElkLayout({ nodes, edges });
     setNodes(layouted.nodes);
     setEdges(layouted.edges);
     fitAfterRender();
-  }, [edges, fitAfterRender, nodes, setEdges, setNodes]);
+  }, [edges, fitAfterRender, graph, nodes, setEdges, setNodes]);
 
   return (
     <div className="canvas-wrap">
