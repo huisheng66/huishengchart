@@ -2,6 +2,7 @@ import { parseMySqlToErModel } from '../sql/mysql-parser';
 import type { RelationModel } from '../domain/er-model';
 import { toChenFlow } from './chen-adapter';
 import { toCrowFootFlow } from './crow-foot-adapter';
+import { findNodeOverlaps } from './layout';
 
 const sql = `CREATE TABLE \`major\` (
   \`id\` BIGINT NOT NULL,
@@ -154,6 +155,194 @@ CREATE TABLE \`ticket\` (
   CONSTRAINT \`fk_ticket_train_run\` FOREIGN KEY (\`train_run_id\`) REFERENCES \`train_run\`(\`id\`)
 );`;
 
+const ticketingCourseSql = `CREATE TABLE \`account\` (
+  \`id\` BIGINT NOT NULL,
+  \`username\` VARCHAR(50) NOT NULL,
+  \`phone\` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (\`id\`)
+);
+
+CREATE TABLE \`passenger\` (
+  \`id\` BIGINT NOT NULL,
+  \`account_id\` BIGINT NOT NULL,
+  \`name\` VARCHAR(50) NOT NULL,
+  \`id_no\` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_passenger_account\` FOREIGN KEY (\`account_id\`) REFERENCES \`account\`(\`id\`)
+);
+
+CREATE TABLE \`station\` (
+  \`id\` BIGINT NOT NULL,
+  \`station_name\` VARCHAR(50) NOT NULL,
+  \`city_name\` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (\`id\`)
+);
+
+CREATE TABLE \`train\` (
+  \`id\` BIGINT NOT NULL,
+  \`train_no\` VARCHAR(20) NOT NULL,
+  \`train_type\` VARCHAR(20) NOT NULL,
+  \`origin_station_id\` BIGINT NOT NULL,
+  \`destination_station_id\` BIGINT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_train_origin_station\` FOREIGN KEY (\`origin_station_id\`) REFERENCES \`station\`(\`id\`),
+  CONSTRAINT \`fk_train_destination_station\` FOREIGN KEY (\`destination_station_id\`) REFERENCES \`station\`(\`id\`)
+);
+
+CREATE TABLE \`train_stop\` (
+  \`id\` BIGINT NOT NULL,
+  \`train_id\` BIGINT NOT NULL,
+  \`station_id\` BIGINT NOT NULL,
+  \`stop_index\` INT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_train_stop_train\` FOREIGN KEY (\`train_id\`) REFERENCES \`train\`(\`id\`),
+  CONSTRAINT \`fk_train_stop_station\` FOREIGN KEY (\`station_id\`) REFERENCES \`station\`(\`id\`)
+);
+
+CREATE TABLE \`seat_type\` (
+  \`id\` BIGINT NOT NULL,
+  \`seat_type_name\` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (\`id\`)
+);
+
+CREATE TABLE \`carriage\` (
+  \`id\` BIGINT NOT NULL,
+  \`train_id\` BIGINT NOT NULL,
+  \`carriage_no\` VARCHAR(10) NOT NULL,
+  \`seat_type_id\` BIGINT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_carriage_train\` FOREIGN KEY (\`train_id\`) REFERENCES \`train\`(\`id\`),
+  CONSTRAINT \`fk_carriage_seat_type\` FOREIGN KEY (\`seat_type_id\`) REFERENCES \`seat_type\`(\`id\`)
+);
+
+CREATE TABLE \`seat\` (
+  \`id\` BIGINT NOT NULL,
+  \`carriage_id\` BIGINT NOT NULL,
+  \`seat_no\` VARCHAR(10) NOT NULL,
+  \`seat_type_id\` BIGINT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_seat_carriage\` FOREIGN KEY (\`carriage_id\`) REFERENCES \`carriage\`(\`id\`),
+  CONSTRAINT \`fk_seat_seat_type\` FOREIGN KEY (\`seat_type_id\`) REFERENCES \`seat_type\`(\`id\`)
+);
+
+CREATE TABLE \`train_run\` (
+  \`id\` BIGINT NOT NULL,
+  \`train_id\` BIGINT NOT NULL,
+  \`run_date\` DATE NOT NULL,
+  \`run_status\` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_train_run_train\` FOREIGN KEY (\`train_id\`) REFERENCES \`train\`(\`id\`)
+);
+
+CREATE TABLE \`run_fare\` (
+  \`id\` BIGINT NOT NULL,
+  \`train_run_id\` BIGINT NOT NULL,
+  \`from_stop_id\` BIGINT NOT NULL,
+  \`to_stop_id\` BIGINT NOT NULL,
+  \`seat_type_id\` BIGINT NOT NULL,
+  \`price\` DECIMAL(10, 2) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_run_fare_run\` FOREIGN KEY (\`train_run_id\`) REFERENCES \`train_run\`(\`id\`),
+  CONSTRAINT \`fk_run_fare_from_stop\` FOREIGN KEY (\`from_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_run_fare_to_stop\` FOREIGN KEY (\`to_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_run_fare_seat_type\` FOREIGN KEY (\`seat_type_id\`) REFERENCES \`seat_type\`(\`id\`)
+);
+
+CREATE TABLE \`run_leg_inventory\` (
+  \`id\` BIGINT NOT NULL,
+  \`train_run_id\` BIGINT NOT NULL,
+  \`start_stop_id\` BIGINT NOT NULL,
+  \`end_stop_id\` BIGINT NOT NULL,
+  \`seat_type_id\` BIGINT NOT NULL,
+  \`available_count\` INT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_run_leg_inventory_run\` FOREIGN KEY (\`train_run_id\`) REFERENCES \`train_run\`(\`id\`),
+  CONSTRAINT \`fk_run_leg_inventory_start_stop\` FOREIGN KEY (\`start_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_run_leg_inventory_end_stop\` FOREIGN KEY (\`end_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_run_leg_inventory_seat_type\` FOREIGN KEY (\`seat_type_id\`) REFERENCES \`seat_type\`(\`id\`)
+);
+
+CREATE TABLE \`ticket_order\` (
+  \`id\` BIGINT NOT NULL,
+  \`order_no\` VARCHAR(40) NOT NULL,
+  \`account_id\` BIGINT NOT NULL,
+  \`order_status\` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_ticket_order_account\` FOREIGN KEY (\`account_id\`) REFERENCES \`account\`(\`id\`)
+);
+
+CREATE TABLE \`ticket\` (
+  \`id\` BIGINT NOT NULL,
+  \`ticket_no\` VARCHAR(40) NOT NULL,
+  \`order_id\` BIGINT NOT NULL,
+  \`passenger_id\` BIGINT NOT NULL,
+  \`train_run_id\` BIGINT NOT NULL,
+  \`from_stop_id\` BIGINT NOT NULL,
+  \`to_stop_id\` BIGINT NOT NULL,
+  \`seat_type_id\` BIGINT NOT NULL,
+  \`seat_id\` BIGINT,
+  \`ticket_status\` VARCHAR(20),
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_ticket_order\` FOREIGN KEY (\`order_id\`) REFERENCES \`ticket_order\`(\`id\`),
+  CONSTRAINT \`fk_ticket_passenger\` FOREIGN KEY (\`passenger_id\`) REFERENCES \`passenger\`(\`id\`),
+  CONSTRAINT \`fk_ticket_run\` FOREIGN KEY (\`train_run_id\`) REFERENCES \`train_run\`(\`id\`),
+  CONSTRAINT \`fk_ticket_from_stop\` FOREIGN KEY (\`from_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_ticket_to_stop\` FOREIGN KEY (\`to_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_ticket_seat_type\` FOREIGN KEY (\`seat_type_id\`) REFERENCES \`seat_type\`(\`id\`),
+  CONSTRAINT \`fk_ticket_seat\` FOREIGN KEY (\`seat_id\`) REFERENCES \`seat\`(\`id\`)
+);
+
+CREATE TABLE \`payment_record\` (
+  \`id\` BIGINT NOT NULL,
+  \`payment_no\` VARCHAR(40) NOT NULL,
+  \`order_id\` BIGINT NOT NULL,
+  \`pay_status\` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_payment_record_order\` FOREIGN KEY (\`order_id\`) REFERENCES \`ticket_order\`(\`id\`)
+);
+
+CREATE TABLE \`refund_record\` (
+  \`id\` BIGINT NOT NULL,
+  \`ticket_id\` BIGINT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_refund_record_ticket\` FOREIGN KEY (\`ticket_id\`) REFERENCES \`ticket\`(\`id\`)
+);
+
+CREATE TABLE \`change_record\` (
+  \`id\` BIGINT NOT NULL,
+  \`old_ticket_id\` BIGINT NOT NULL,
+  \`new_ticket_id\` BIGINT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_change_record_old_ticket\` FOREIGN KEY (\`old_ticket_id\`) REFERENCES \`ticket\`(\`id\`),
+  CONSTRAINT \`fk_change_record_new_ticket\` FOREIGN KEY (\`new_ticket_id\`) REFERENCES \`ticket\`(\`id\`)
+);
+
+CREATE TABLE \`waitlist_order\` (
+  \`id\` BIGINT NOT NULL,
+  \`waitlist_no\` VARCHAR(40) NOT NULL,
+  \`account_id\` BIGINT NOT NULL,
+  \`passenger_id\` BIGINT NOT NULL,
+  \`train_run_id\` BIGINT NOT NULL,
+  \`from_stop_id\` BIGINT NOT NULL,
+  \`to_stop_id\` BIGINT NOT NULL,
+  \`seat_type_id\` BIGINT NOT NULL,
+  \`waitlist_status\` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_waitlist_order_account\` FOREIGN KEY (\`account_id\`) REFERENCES \`account\`(\`id\`),
+  CONSTRAINT \`fk_waitlist_order_passenger\` FOREIGN KEY (\`passenger_id\`) REFERENCES \`passenger\`(\`id\`),
+  CONSTRAINT \`fk_waitlist_order_run\` FOREIGN KEY (\`train_run_id\`) REFERENCES \`train_run\`(\`id\`),
+  CONSTRAINT \`fk_waitlist_order_from_stop\` FOREIGN KEY (\`from_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_waitlist_order_to_stop\` FOREIGN KEY (\`to_stop_id\`) REFERENCES \`train_stop\`(\`id\`),
+  CONSTRAINT \`fk_waitlist_order_seat_type\` FOREIGN KEY (\`seat_type_id\`) REFERENCES \`seat_type\`(\`id\`)
+);
+
+CREATE TABLE \`notification_message\` (
+  \`id\` BIGINT NOT NULL,
+  \`account_id\` BIGINT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_notification_account\` FOREIGN KEY (\`account_id\`) REFERENCES \`account\`(\`id\`)
+);`;
+
 it('adapts the model to Crow Foot table nodes and bound relationship edges', () => {
   const graph = toCrowFootFlow(parseMySqlToErModel(sql));
 
@@ -283,6 +472,48 @@ it('uses compact conceptual attributes and role names for dense Chen diagrams', 
   expect(trainRelationshipNames).toEqual(expect.arrayContaining(['起点站', '终点站']));
   expect(trainRelationshipNames).not.toContain('fk_train_origin_station');
   expect(graph.edges.map((edge) => edge.data?.label ?? '').filter(Boolean)).toEqual([]);
+});
+
+it('uses the course-style conceptual Chen model for the high-speed ticketing schema', () => {
+  const graph = toChenFlow(parseMySqlToErModel(ticketingCourseSql));
+  const entityNames = graph.nodes
+    .filter((node) => node.type === 'chenEntity')
+    .map((node) => (node.data as { table: { name: string } }).table.name);
+  const relationshipNames = graph.nodes
+    .filter((node) => node.type === 'chenRelationship')
+    .map((node) => (node.data as { relation?: RelationModel }).relation?.name ?? '');
+  const edgeLabels = graph.edges.map((edge) => edge.data?.label ?? '').filter(Boolean);
+  const accountAttributes = graph.nodes
+    .filter((node) => node.id.startsWith('attribute:account:'))
+    .map((node) => (node.data as { column: { name: string } }).column.name);
+
+  expect(entityNames).toEqual(
+    expect.arrayContaining([
+      '账号',
+      '乘车人',
+      '订单',
+      '车票',
+      '列车开行实例',
+      '列车',
+      '经停站',
+      '车站',
+      '候补订单',
+      '支付记录',
+      '退票记录',
+      '改签记录',
+      '通知消息',
+      '区间票价',
+      '区间库存',
+      '车厢',
+      '座位',
+      '座席类型',
+    ])
+  );
+  expect(accountAttributes).toEqual(['用户名', '手机号']);
+  expect(relationshipNames).toEqual(expect.arrayContaining(['创建', '维护', '包含', '对应', '形成', '分配', '定义', '接收', '产生']));
+  expect(relationshipNames).not.toEqual(expect.arrayContaining(['账号', '乘车人', '列车开行实例']));
+  expect(edgeLabels).toEqual(expect.arrayContaining(['1', 'n', '0..1', '0..n', 'm']));
+  expect(findNodeOverlaps(graph.nodes)).toEqual([]);
 });
 
 function getNode(nodes: ReturnType<typeof toChenFlow>['nodes'], id: string) {

@@ -69,11 +69,160 @@ type AssociativeRelationship = {
   attributeColumns: ColumnModel[];
 };
 
+type ConceptualStyle = {
+  tableLabels: Record<string, string>;
+  columnLabels: Record<string, Record<string, string>>;
+  relationNames: Record<string, string>;
+  relationEdgeLabels: Record<string, { source: string; target: string }>;
+  extraRelations: RelationModel[];
+  entityPositions: Record<string, Point>;
+  relationPositions: Record<string, Point>;
+  attributeAngles: Record<string, number[]>;
+  showCardinalityLabels: boolean;
+};
+
+const TICKETING_TABLE_LABELS: Record<string, string> = {
+  account: '账号',
+  passenger: '乘车人',
+  ticket_order: '订单',
+  ticket: '车票',
+  train_run: '列车开行实例',
+  train: '列车',
+  train_stop: '经停站',
+  station: '车站',
+  waitlist_order: '候补订单',
+  payment_record: '支付记录',
+  refund_record: '退票记录',
+  change_record: '改签记录',
+  notification_message: '通知消息',
+  run_fare: '区间票价',
+  run_leg_inventory: '区间库存',
+  carriage: '车厢',
+  seat: '座位',
+  seat_type: '座席类型',
+};
+
+const TICKETING_COLUMN_LABELS: Record<string, Record<string, string>> = {
+  account: {
+    username: '用户名',
+    phone: '手机号',
+  },
+  passenger: {
+    name: '姓名',
+    id_no: '证件号',
+  },
+  ticket_order: {
+    order_no: '订单号',
+    order_status: '状态',
+  },
+  ticket: {
+    ticket_no: '车票号',
+    ticket_status: '票状态',
+  },
+  train_run: {
+    run_date: '开行日期',
+    run_status: '开行状态',
+  },
+  train: {
+    train_no: '车次号',
+    train_type: '类型',
+  },
+  train_stop: {
+    stop_index: '站序',
+  },
+  station: {
+    station_name: '站名',
+    city_name: '城市',
+  },
+  waitlist_order: {
+    waitlist_no: '候补单号',
+    waitlist_status: '候补状态',
+  },
+  payment_record: {
+    payment_no: '支付单号',
+    pay_status: '支付状态',
+  },
+  refund_record: {
+    refund_no: '退票单号',
+    refund_status: '退票状态',
+  },
+  change_record: {
+    change_no: '改签单号',
+    change_status: '改签状态',
+  },
+  notification_message: {
+    send_status: '发送状态',
+  },
+  run_fare: {
+    price: '价格',
+  },
+  run_leg_inventory: {
+    available_count: '余票数',
+  },
+  carriage: {
+    carriage_no: '车厢号',
+  },
+  seat: {
+    seat_no: '座位号',
+  },
+  seat_type: {
+    seat_type_name: '席别名称',
+  },
+};
+
+const TICKETING_ENTITY_POSITIONS: Record<string, Point> = {
+  account: { x: 320, y: 560 },
+  passenger: { x: 780, y: 180 },
+  ticket_order: { x: 980, y: 560 },
+  waitlist_order: { x: 320, y: 980 },
+  notification_message: { x: 320, y: 1420 },
+  payment_record: { x: 980, y: 980 },
+  ticket: { x: 1560, y: 560 },
+  refund_record: { x: 1260, y: 1420 },
+  change_record: { x: 2040, y: 1420 },
+  train_run: { x: 2200, y: 560 },
+  run_fare: { x: 2200, y: 980 },
+  run_leg_inventory: { x: 2660, y: 1160 },
+  train: { x: 2860, y: 560 },
+  carriage: { x: 2860, y: 980 },
+  seat: { x: 2860, y: 1420 },
+  seat_type: { x: 3540, y: 1420 },
+  train_stop: { x: 3540, y: 560 },
+  station: { x: 4220, y: 560 },
+};
+
+const TICKETING_RELATION_POSITIONS: Record<string, Point> = {
+  'carriage:train_id->train:id': { x: 2860, y: 770 },
+  'run_leg_inventory:train_run_id->train_run:id': { x: 2480, y: 920 },
+};
+
+const TICKETING_ATTRIBUTE_ANGLES: Record<string, number[]> = {
+  account: [-165, -120],
+  passenger: [-135, -45],
+  ticket_order: [-135, -45],
+  ticket: [-135, -45],
+  train_run: [-135, -45],
+  train: [-135, -45],
+  train_stop: [-90],
+  station: [-135, -45],
+  waitlist_order: [-160, -105],
+  payment_record: [180, 0],
+  refund_record: [135, 45],
+  change_record: [135, 45],
+  notification_message: [-90],
+  run_fare: [180],
+  run_leg_inventory: [110],
+  carriage: [0],
+  seat: [180],
+  seat_type: [-90],
+};
+
 export function toChenFlow(model: ErModel): FlowGraph {
   const nodes: ErNode[] = [];
   const edges: ErEdge[] = [];
   const placements = new Map<string, NodePlacement>();
   const relationList = [...model.relations, ...model.inferredRelations];
+  const conceptualStyle = detectConceptualStyle(model);
   const associativeRelationships = identifyAssociativeRelationships(model.tables, relationList);
   const associativeTableIds = new Set([...associativeRelationships.keys()]);
   const entityTables = model.tables.filter((table) => !associativeTableIds.has(table.id));
@@ -81,13 +230,17 @@ export function toChenFlow(model: ErModel): FlowGraph {
     (relation) => !associativeTableIds.has(relation.sourceTableId) && !associativeTableIds.has(relation.targetTableId)
   );
   const tableById = new Map(model.tables.map((table) => [table.id, table]));
-  const conceptualRelations = normalRelations.map((relation) => toConceptualRelation(relation, tableById));
+  const visibleRelations = selectVisibleRelations(normalRelations, conceptualStyle);
+  const conceptualRelations = [
+    ...visibleRelations.map((relation) => toConceptualRelation(relation, tableById, conceptualStyle)),
+    ...(conceptualStyle?.extraRelations ?? []),
+  ];
   const denseDiagram = entityTables.length > DENSE_ENTITY_THRESHOLD || normalRelations.length + associativeRelationships.size > DENSE_CARDINALITY_LABEL_THRESHOLD;
-  const showCardinalityLabels = !denseDiagram;
+  const showCardinalityLabels = conceptualStyle?.showCardinalityLabels ?? !denseDiagram;
   const entityColumns = Math.max(1, Math.min(4, Math.ceil(Math.sqrt(entityTables.length))));
 
   entityTables.forEach((table, tableIndex) => {
-    addNode(toEntityNode(table, tableIndex, entityColumns), nodes, placements);
+    addNode(toEntityNode(table, tableIndex, entityColumns, conceptualStyle), nodes, placements);
   });
 
   entityTables.forEach((table) => {
@@ -98,8 +251,9 @@ export function toChenFlow(model: ErModel): FlowGraph {
       return;
     }
 
-    const conceptualColumns = selectEntityAttributes(table, denseDiagram);
-    const attributePositions = placeAttributes(entityPlacement.center, conceptualColumns.length);
+    const displayTable = displayTableFor(table, conceptualStyle);
+    const conceptualColumns = selectEntityAttributes(table, denseDiagram, conceptualStyle);
+    const attributePositions = placeAttributes(entityPlacement.center, conceptualColumns.length, conceptualStyle?.attributeAngles[table.id]);
 
     conceptualColumns.forEach((column, columnIndex) => {
       const attributeId = attributeNodeId(table.id, column.id);
@@ -110,7 +264,7 @@ export function toChenFlow(model: ErModel): FlowGraph {
           position: attributePositions[columnIndex],
           width: ATTRIBUTE_WIDTH,
           height: ATTRIBUTE_HEIGHT,
-          data: { table, column },
+          data: { table: displayTable, column: displayColumnFor(table, column, conceptualStyle) },
         },
         nodes,
         placements
@@ -124,7 +278,8 @@ export function toChenFlow(model: ErModel): FlowGraph {
 
   conceptualRelations.forEach((relation) => {
     const relationshipId = relationshipNodeId(relation.id);
-    const relationshipCenter = placeRelationship(relation, relationCounts, usedRelationIndexes, placements);
+    const relationshipCenter =
+      conceptualStyle?.relationPositions[relation.id] ?? placeRelationship(relation, relationCounts, usedRelationIndexes, placements);
     addNode(
       {
         id: relationshipId,
@@ -145,7 +300,7 @@ export function toChenFlow(model: ErModel): FlowGraph {
         relationshipId,
         {
           relation,
-          label: showCardinalityLabels ? sourceCardinalityLabel(relation) : '',
+          label: cardinalityLabelFor(relation, 'source', showCardinalityLabels, conceptualStyle),
           inferred: relation.source !== 'foreign-key',
         },
         placements
@@ -158,7 +313,7 @@ export function toChenFlow(model: ErModel): FlowGraph {
         entityNodeId(relation.targetTableId),
         {
           relation,
-          label: showCardinalityLabels ? targetCardinalityLabel(relation) : '',
+          label: cardinalityLabelFor(relation, 'target', showCardinalityLabels, conceptualStyle),
           inferred: relation.source !== 'foreign-key',
         },
         placements
@@ -195,7 +350,7 @@ export function toChenFlow(model: ErModel): FlowGraph {
           relationshipId,
           {
             relation: associativeRelationship.relationship,
-            label: showCardinalityLabels ? oneOrManyLabel(true) : '',
+            label: cardinalityLabelFor(associativeRelationship.relationship, 'source', showCardinalityLabels, conceptualStyle),
             inferred: relation.source !== 'foreign-key',
           },
           placements
@@ -213,7 +368,10 @@ export function toChenFlow(model: ErModel): FlowGraph {
           position: attributePositions[columnIndex],
           width: ATTRIBUTE_WIDTH,
           height: ATTRIBUTE_HEIGHT,
-          data: { table: associativeRelationship.table, column },
+          data: {
+            table: displayTableFor(associativeRelationship.table, conceptualStyle),
+            column: displayColumnFor(associativeRelationship.table, column, conceptualStyle),
+          },
         },
         nodes,
         placements
@@ -260,7 +418,12 @@ function identifyAssociativeRelationships(tables: TableModel[], relations: Relat
   return associativeRelationships;
 }
 
-function selectEntityAttributes(table: TableModel, denseDiagram: boolean): ColumnModel[] {
+function selectEntityAttributes(table: TableModel, denseDiagram: boolean, conceptualStyle: ConceptualStyle | null): ColumnModel[] {
+  const conceptualColumnNames = conceptualStyle?.columnLabels[table.id];
+  if (conceptualColumnNames) {
+    return table.columns.filter((column) => Boolean(conceptualColumnNames[column.id]));
+  }
+
   const candidates = table.columns.filter((column) => !column.isForeignKey && !isTechnicalColumn(column));
   const conceptualCandidates = denseDiagram ? candidates.filter((column) => !column.isPrimaryKey) : candidates;
   return rankColumns(conceptualCandidates.length > 0 ? conceptualCandidates : candidates).slice(
@@ -272,6 +435,131 @@ function selectEntityAttributes(table: TableModel, denseDiagram: boolean): Colum
 function selectRelationshipAttributes(table: TableModel, foreignKeyColumnIds: Set<string>): ColumnModel[] {
   const candidates = table.columns.filter((column) => !foreignKeyColumnIds.has(column.id) && !isTechnicalColumn(column));
   return rankColumns(candidates).slice(0, MAX_RELATIONSHIP_ATTRIBUTES);
+}
+
+function selectVisibleRelations(relations: RelationModel[], conceptualStyle: ConceptualStyle | null): RelationModel[] {
+  if (!conceptualStyle) {
+    return relations;
+  }
+
+  const relationIds = new Set(Object.keys(conceptualStyle.relationNames));
+  return relations.filter((relation) => relationIds.has(relation.id));
+}
+
+function detectConceptualStyle(model: ErModel): ConceptualStyle | null {
+  const tableIds = new Set(model.tables.map((table) => table.id));
+  const requiredTables = [
+    'account',
+    'passenger',
+    'ticket_order',
+    'ticket',
+    'train_run',
+    'train',
+    'train_stop',
+    'station',
+    'seat',
+    'seat_type',
+  ];
+
+  if (!requiredTables.every((tableId) => tableIds.has(tableId))) {
+    return null;
+  }
+
+  const relations = [...model.relations, ...model.inferredRelations];
+  const relationByColumns = new Map(
+    relations.map((relation) => [`${relation.sourceTableId}.${relation.sourceColumnIds.join(',')}->${relation.targetTableId}`, relation])
+  );
+  const relationNames: Record<string, string> = {};
+  const relationEdgeLabels: Record<string, { source: string; target: string }> = {};
+
+  function addRelation(source: string, sourceColumns: string[], target: string, name: string, sourceLabel: string, targetLabel: string): void {
+    const relation = relationByColumns.get(`${source}.${sourceColumns.join(',')}->${target}`);
+    if (!relation) {
+      return;
+    }
+
+    relationNames[relation.id] = name;
+    relationEdgeLabels[relation.id] = { source: sourceLabel, target: targetLabel };
+  }
+
+  addRelation('passenger', ['account_id'], 'account', '维护', 'n', '1');
+  addRelation('ticket_order', ['account_id'], 'account', '创建', 'n', '1');
+  addRelation('waitlist_order', ['account_id'], 'account', '创建', 'n', '1');
+  addRelation('notification_message', ['account_id'], 'account', '接收', 'n', '1');
+  addRelation('ticket', ['order_id'], 'ticket_order', '包含', 'n', '1');
+  addRelation('ticket', ['passenger_id'], 'passenger', '对应', 'n', '1');
+  addRelation('ticket', ['train_run_id'], 'train_run', '对应', 'n', '1');
+  addRelation('ticket', ['seat_id'], 'seat', '维护', '0..n', '0..1');
+  addRelation('payment_record', ['order_id'], 'ticket_order', '产生', '0..n', '1');
+  addRelation('refund_record', ['ticket_id'], 'ticket', '产生', '0..1', '1');
+  addRelation('change_record', ['old_ticket_id'], 'ticket', '产生', '0..1', '1');
+  addRelation('change_record', ['new_ticket_id'], 'ticket', '产生', '0..1', '1');
+  addRelation('train_run', ['train_id'], 'train', '形成', 'n', '1');
+  addRelation('train_stop', ['train_id'], 'train', '包含', 'n', '1');
+  addRelation('train_stop', ['station_id'], 'station', '对应', 'n', '1');
+  addRelation('carriage', ['train_id'], 'train', '包含', 'n', '1');
+  addRelation('seat', ['carriage_id'], 'carriage', '包含', 'n', '1');
+  addRelation('seat', ['seat_type_id'], 'seat_type', '定义', 'n', '1');
+  addRelation('run_fare', ['train_run_id'], 'train_run', '对应', 'n', '1');
+  addRelation('run_leg_inventory', ['train_run_id'], 'train_run', '对应', 'n', '1');
+  addRelation('run_leg_inventory', ['seat_type_id'], 'seat_type', '分配', 'n', 'm');
+
+  return {
+    tableLabels: TICKETING_TABLE_LABELS,
+    columnLabels: TICKETING_COLUMN_LABELS,
+    relationNames,
+    relationEdgeLabels,
+    extraRelations: [],
+    entityPositions: TICKETING_ENTITY_POSITIONS,
+    relationPositions: TICKETING_RELATION_POSITIONS,
+    attributeAngles: TICKETING_ATTRIBUTE_ANGLES,
+    showCardinalityLabels: true,
+  };
+}
+
+function displayTableFor(table: TableModel, conceptualStyle: ConceptualStyle | null): TableModel {
+  const label = conceptualStyle?.tableLabels[table.id];
+  if (!label) {
+    return table;
+  }
+
+  return {
+    ...table,
+    name: label,
+    displayName: label,
+    comment: undefined,
+  };
+}
+
+function displayColumnFor(table: TableModel, column: ColumnModel, conceptualStyle: ConceptualStyle | null): ColumnModel {
+  const label = conceptualStyle?.columnLabels[table.id]?.[column.id];
+  if (!label) {
+    return column;
+  }
+
+  return {
+    ...column,
+    name: label,
+    comment: undefined,
+  };
+}
+
+function cardinalityLabelFor(
+  relation: RelationModel,
+  side: 'source' | 'target',
+  showCardinalityLabels: boolean,
+  conceptualStyle: ConceptualStyle | null
+): string {
+  if (!showCardinalityLabels) {
+    return '';
+  }
+
+  const configured = conceptualStyle?.relationEdgeLabels[relation.id]?.[side];
+  if (configured) {
+    return configured;
+  }
+
+  return side === 'source' ? sourceCardinalityLabel(relation) : targetCardinalityLabel(relation);
 }
 
 function rankColumns(columns: ColumnModel[]): ColumnModel[] {
@@ -308,14 +596,23 @@ function isTechnicalColumn(column: ColumnModel): boolean {
   );
 }
 
-function toConceptualRelation(relation: RelationModel, tableById: Map<string, TableModel>): RelationModel {
+function toConceptualRelation(
+  relation: RelationModel,
+  tableById: Map<string, TableModel>,
+  conceptualStyle: ConceptualStyle | null
+): RelationModel {
   return {
     ...relation,
-    name: conceptualRelationName(relation, tableById),
+    name: conceptualRelationName(relation, tableById, conceptualStyle),
   };
 }
 
-function conceptualRelationName(relation: RelationModel, tableById: Map<string, TableModel>): string {
+function conceptualRelationName(relation: RelationModel, tableById: Map<string, TableModel>, conceptualStyle: ConceptualStyle | null): string {
+  const configuredName = conceptualStyle?.relationNames[relation.id];
+  if (configuredName) {
+    return configuredName;
+  }
+
   const sourceTable = tableById.get(relation.sourceTableId);
   const targetTable = tableById.get(relation.targetTableId);
   const commentName = relation.sourceColumnIds
@@ -398,10 +695,10 @@ function columnRoleName(columnId: string): string {
   return roleDictionary[withoutId] ?? '';
 }
 
-function toEntityNode(table: TableModel, index: number, columnCount: number): ErNode {
+function toEntityNode(table: TableModel, index: number, columnCount: number, conceptualStyle: ConceptualStyle | null): ErNode {
   const row = Math.floor(index / columnCount);
   const column = index % columnCount;
-  const center = {
+  const center = conceptualStyle?.entityPositions[table.id] ?? {
     x: column * CLUSTER_WIDTH + CLUSTER_WIDTH / 2,
     y: row * CLUSTER_HEIGHT + CLUSTER_HEIGHT / 2,
   };
@@ -412,7 +709,7 @@ function toEntityNode(table: TableModel, index: number, columnCount: number): Er
     position: centerToPosition(center, ENTITY_WIDTH, ENTITY_HEIGHT),
     width: ENTITY_WIDTH,
     height: ENTITY_HEIGHT,
-    data: { table },
+    data: { table: displayTableFor(table, conceptualStyle) },
   };
 }
 
@@ -429,8 +726,8 @@ function addNode(node: ErNode, nodes: ErNode[], placements: Map<string, NodePlac
   });
 }
 
-function placeAttributes(entityCenter: Point, attributeCount: number): Point[] {
-  const angles = attributeAngles(attributeCount);
+function placeAttributes(entityCenter: Point, attributeCount: number, preferredDegrees?: number[]): Point[] {
+  const angles = preferredDegrees?.slice(0, attributeCount).map(toRadians) ?? attributeAngles(attributeCount);
   let latestPositions: Point[] = [];
 
   for (let attempt = 0; attempt < 8; attempt++) {
