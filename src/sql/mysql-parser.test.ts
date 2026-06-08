@@ -90,3 +90,31 @@ it('does not infer duplicate relations for declared foreign keys', () => {
 
   expect(model.inferredRelations).toEqual([]);
 });
+
+it('parses foreign keys declared with ALTER TABLE after table creation', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`major\` (
+    \`id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
+  CREATE TABLE \`student\` (
+    \`id\` BIGINT NOT NULL,
+    \`major_id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
+  ALTER TABLE \`student\`
+    ADD CONSTRAINT \`fk_student_major\`
+    FOREIGN KEY (\`major_id\`) REFERENCES \`major\`(\`id\`);`);
+
+  expect(model.relations).toEqual([
+    expect.objectContaining({
+      id: 'student:major_id->major:id',
+      name: 'fk_student_major',
+      sourceTableId: 'student',
+      targetTableId: 'major',
+    }),
+  ]);
+  expect(model.inferredRelations).toEqual([]);
+  expect(model.tables.find((table) => table.id === 'student')?.columns.find((column) => column.id === 'major_id')?.isForeignKey).toBe(true);
+});

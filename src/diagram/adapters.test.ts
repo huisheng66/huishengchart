@@ -39,7 +39,9 @@ it('adapts the model to Crow Foot table nodes and bound relationship edges', () 
         id: 'student:major_id->major:id',
         type: 'relationship',
         source: 'student',
+        sourceHandle: 'source:major_id',
         target: 'major',
+        targetHandle: 'target:id',
         data: expect.objectContaining({ label: 'N:1', inferred: false }),
       }),
       expect.objectContaining({

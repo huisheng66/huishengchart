@@ -5,7 +5,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    exclude: ['node_modules/**', 'dist/**', '.reference-repos/**', '.superpowers/**'],
     globals: true,
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: './src/test/setup.ts',
   },
 });

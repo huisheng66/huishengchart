@@ -33,6 +33,8 @@ export function parseMySqlToErModel(sql: string): ErModel {
     tableNames.add(table.name);
   }
 
+  pendingForeignKeys.push(...extractAlterTableForeignKeys(sql));
+
   const declaredRelationKeys = new Set<string>();
 
   for (const foreignKey of pendingForeignKeys) {
@@ -185,6 +187,28 @@ function parseForeignKeyConstraint(definition: string, sourceTableName: string):
     targetTableName: normalizeIdentifier(match[3]),
     targetColumnNames: parseIdentifierList(match[4]),
   };
+}
+
+function extractAlterTableForeignKeys(sql: string): PendingForeignKey[] {
+  const foreignKeys: PendingForeignKey[] = [];
+  const alterTablePattern =
+    /alter\s+table\s+((?:`[^`]+`|[a-zA-Z_][\w$]*)(?:\s*\.\s*(?:`[^`]+`|[a-zA-Z_][\w$]*))?)\s+([\s\S]*?);/gi;
+
+  let match: RegExpExecArray | null;
+  while ((match = alterTablePattern.exec(sql)) !== null) {
+    const sourceTableName = normalizeIdentifier(match[1]);
+    const actions = splitTopLevel(match[2], ',');
+
+    for (const action of actions) {
+      const normalized = action.replace(/^add\s+/i, '').trim();
+      const foreignKey = parseForeignKeyConstraint(normalized, sourceTableName);
+      if (foreignKey) {
+        foreignKeys.push(foreignKey);
+      }
+    }
+  }
+
+  return foreignKeys;
 }
 
 function createForeignKeyRelation(

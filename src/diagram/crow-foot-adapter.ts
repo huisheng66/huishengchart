@@ -29,13 +29,19 @@ function toRelationshipEdge(relation: RelationModel): ErEdge {
     id: relation.id,
     type: 'relationship',
     source: relation.sourceTableId,
+    sourceHandle: columnHandleId('source', relation.sourceColumnIds),
     target: relation.targetTableId,
+    targetHandle: columnHandleId('target', relation.targetColumnIds),
     data: {
       relation,
       label: edgeLabel(relation),
       inferred: relation.source !== 'foreign-key',
     },
   };
+}
+
+function columnHandleId(side: 'source' | 'target', columnIds: string[]): string {
+  return `${side}:${columnIds.join('|')}`;
 }
 
 function edgeLabel(relation: RelationModel): string {
