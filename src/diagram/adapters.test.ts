@@ -516,6 +516,12 @@ it('uses the course-style conceptual Chen model for the high-speed ticketing sch
   expect(findNodeOverlaps(graph.nodes)).toEqual([]);
 });
 
+it('keeps ticketing Chen relationship edges from crossing unrelated nodes', () => {
+  const graph = toChenFlow(parseMySqlToErModel(ticketingCourseSql));
+
+  expect(findRelationshipEdgesCrossingNodes(graph)).toEqual([]);
+});
+
 function getNode(nodes: ReturnType<typeof toChenFlow>['nodes'], id: string) {
   const node = nodes.find((candidate) => candidate.id === id);
   expect(node).toBeDefined();
@@ -533,4 +539,170 @@ function centerDistance(left: ReturnType<typeof getNode>, right: ReturnType<type
   };
 
   return Math.hypot(leftCenter.x - rightCenter.x, leftCenter.y - rightCenter.y);
+}
+
+type Graph = ReturnType<typeof toChenFlow>;
+type GraphNode = Graph['nodes'][number];
+
+type Point = {
+  x: number;
+  y: number;
+};
+
+type Rect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+function findNodesCrossedByEdge(graph: Graph, edgeId: string): string[] {
+  const edge = graph.edges.find((candidate) => candidate.id === edgeId);
+  expect(edge).toBeDefined();
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const source = nodeById.get(edge!.source);
+  const target = nodeById.get(edge!.target);
+  expect(source).toBeDefined();
+  expect(target).toBeDefined();
+
+  const start = handlePoint(source!, edge!.sourceHandle);
+  const end = handlePoint(target!, edge!.targetHandle);
+
+  return graph.nodes
+    .filter((node) => node.id !== edge!.source && node.id !== edge!.target)
+    .filter((node) => segmentIntersectsRect(start, end, nodeRect(node, 10)))
+    .map((node) => node.id);
+}
+
+function findRelationshipEdgesCrossingNodes(graph: Graph): Array<{ edgeId: string; crossedNodeIds: string[] }> {
+  return graph.edges
+    .filter((edge) => !edge.source.startsWith('attribute:') && !edge.target.startsWith('attribute:'))
+    .map((edge) => ({
+      edgeId: edge.id,
+      crossedNodeIds: findNodesCrossedByEdge(graph, edge.id),
+    }))
+    .filter((result) => result.crossedNodeIds.length > 0);
+}
+
+function handlePoint(node: GraphNode, handleId?: string | null): Point {
+  const rect = nodeRect(node);
+  const center = {
+    x: (rect.left + rect.right) / 2,
+    y: (rect.top + rect.bottom) / 2,
+  };
+  const side = handleId?.split(':')[1];
+
+  if (node.id.startsWith('relationship:')) {
+    return rotatedRelationshipHandlePoint(center, rect, side);
+  }
+
+  if (side === 'left') {
+    return { x: rect.left, y: center.y };
+  }
+
+  if (side === 'right') {
+    return { x: rect.right, y: center.y };
+  }
+
+  if (side === 'top') {
+    return { x: center.x, y: rect.top };
+  }
+
+  if (side === 'bottom') {
+    return { x: center.x, y: rect.bottom };
+  }
+
+  return center;
+}
+
+function rotatedRelationshipHandlePoint(center: Point, rect: Rect, side?: string): Point {
+  const width = rect.right - rect.left;
+  const height = rect.bottom - rect.top;
+  const offset =
+    side === 'left'
+      ? { x: -width / 2, y: 0 }
+      : side === 'right'
+        ? { x: width / 2, y: 0 }
+        : side === 'top'
+          ? { x: 0, y: -height / 2 }
+          : side === 'bottom'
+            ? { x: 0, y: height / 2 }
+            : { x: 0, y: 0 };
+  const angle = Math.PI / 4;
+
+  return {
+    x: center.x + offset.x * Math.cos(angle) - offset.y * Math.sin(angle),
+    y: center.y + offset.x * Math.sin(angle) + offset.y * Math.cos(angle),
+  };
+}
+
+function nodeRect(node: GraphNode, padding = 0): Rect {
+  return {
+    left: node.position.x - padding,
+    top: node.position.y - padding,
+    right: node.position.x + (node.width ?? 0) + padding,
+    bottom: node.position.y + (node.height ?? 0) + padding,
+  };
+}
+
+function segmentIntersectsRect(start: Point, end: Point, rect: Rect): boolean {
+  if (pointInsideRect(start, rect) || pointInsideRect(end, rect)) {
+    return true;
+  }
+
+  return [
+    [{ x: rect.left, y: rect.top }, { x: rect.right, y: rect.top }],
+    [{ x: rect.right, y: rect.top }, { x: rect.right, y: rect.bottom }],
+    [{ x: rect.right, y: rect.bottom }, { x: rect.left, y: rect.bottom }],
+    [{ x: rect.left, y: rect.bottom }, { x: rect.left, y: rect.top }],
+  ].some(([rectStart, rectEnd]) => segmentsIntersect(start, end, rectStart, rectEnd));
+}
+
+function pointInsideRect(point: Point, rect: Rect): boolean {
+  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+}
+
+function segmentsIntersect(firstStart: Point, firstEnd: Point, secondStart: Point, secondEnd: Point): boolean {
+  const firstDirection = direction(firstStart, firstEnd, secondStart);
+  const secondDirection = direction(firstStart, firstEnd, secondEnd);
+  const thirdDirection = direction(secondStart, secondEnd, firstStart);
+  const fourthDirection = direction(secondStart, secondEnd, firstEnd);
+
+  if (firstDirection === 0 && pointOnSegment(secondStart, firstStart, firstEnd)) {
+    return true;
+  }
+
+  if (secondDirection === 0 && pointOnSegment(secondEnd, firstStart, firstEnd)) {
+    return true;
+  }
+
+  if (thirdDirection === 0 && pointOnSegment(firstStart, secondStart, secondEnd)) {
+    return true;
+  }
+
+  if (fourthDirection === 0 && pointOnSegment(firstEnd, secondStart, secondEnd)) {
+    return true;
+  }
+
+  return firstDirection * secondDirection < 0 && thirdDirection * fourthDirection < 0;
+}
+
+function direction(origin: Point, target: Point, point: Point): number {
+  const crossProduct = (target.x - origin.x) * (point.y - origin.y) - (target.y - origin.y) * (point.x - origin.x);
+
+  if (Math.abs(crossProduct) < 0.001) {
+    return 0;
+  }
+
+  return crossProduct > 0 ? 1 : -1;
+}
+
+function pointOnSegment(point: Point, start: Point, end: Point): boolean {
+  return (
+    point.x >= Math.min(start.x, end.x) &&
+    point.x <= Math.max(start.x, end.x) &&
+    point.y >= Math.min(start.y, end.y) &&
+    point.y <= Math.max(start.y, end.y)
+  );
 }

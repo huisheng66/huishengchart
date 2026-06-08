@@ -21,6 +21,7 @@ const MAX_DENSE_ENTITY_ATTRIBUTES = 2;
 const MAX_RELATIONSHIP_ATTRIBUTES = 4;
 const DENSE_CARDINALITY_LABEL_THRESHOLD = 12;
 const DENSE_ENTITY_THRESHOLD = 6;
+const HANDLE_SIDES: HandleSide[] = ['left', 'right', 'top', 'bottom'];
 
 const TECHNICAL_COLUMN_NAMES = new Set([
   'created_at',
@@ -47,6 +48,15 @@ const IMPORTANT_COLUMN_PATTERN = /(status|state|type|amount|price|total|quantity
 type Point = {
   x: number;
   y: number;
+};
+
+type HandleSide = 'left' | 'right' | 'top' | 'bottom';
+
+type Rect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 };
 
 type NodePlacement = {
@@ -192,26 +202,29 @@ const TICKETING_ENTITY_POSITIONS: Record<string, Point> = {
 };
 
 const TICKETING_RELATION_POSITIONS: Record<string, Point> = {
+  'notification_message:account_id->account:id': { x: 80, y: 1140 },
+  'ticket:seat_id->seat:id': { x: 1760, y: 1220 },
   'carriage:train_id->train:id': { x: 2860, y: 770 },
   'run_leg_inventory:train_run_id->train_run:id': { x: 2480, y: 920 },
+  'run_leg_inventory:seat_type_id->seat_type:id': { x: 3340, y: 1050 },
 };
 
 const TICKETING_ATTRIBUTE_ANGLES: Record<string, number[]> = {
   account: [-165, -120],
   passenger: [-135, -45],
   ticket_order: [-135, -45],
-  ticket: [-135, -45],
+  ticket: [-90, -45],
   train_run: [-135, -45],
   train: [-135, -45],
   train_stop: [-90],
   station: [-135, -45],
-  waitlist_order: [-160, -105],
+  waitlist_order: [20, 65],
   payment_record: [180, 0],
   refund_record: [135, 45],
   change_record: [135, 45],
   notification_message: [-90],
-  run_fare: [180],
-  run_leg_inventory: [110],
+  run_fare: [45],
+  run_leg_inventory: [0],
   carriage: [0],
   seat: [180],
   seat_type: [-90],
@@ -292,7 +305,10 @@ export function toChenFlow(model: ErModel): FlowGraph {
       nodes,
       placements
     );
+  });
 
+  conceptualRelations.forEach((relation) => {
+    const relationshipId = relationshipNodeId(relation.id);
     edges.push({
       ...createStraightEdge(
         `edge:${entityNodeId(relation.sourceTableId)}:${relationshipId}`,
@@ -877,27 +893,187 @@ function createStraightEdge(
 ): ErEdge {
   const sourcePlacement = placements.get(source);
   const targetPlacement = placements.get(target);
+  const handles =
+    sourcePlacement && targetPlacement
+      ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements)
+      : { sourceHandle: undefined, targetHandle: undefined };
 
   return {
     id,
     type: 'relationship',
     source,
     target,
-    sourceHandle: sourcePlacement && targetPlacement ? sideHandleId('source', sourcePlacement, targetPlacement) : undefined,
-    targetHandle: sourcePlacement && targetPlacement ? sideHandleId('target', targetPlacement, sourcePlacement) : undefined,
+    sourceHandle: handles.sourceHandle,
+    targetHandle: handles.targetHandle,
     data: { ...data, edgeStyle: 'straight' },
   };
 }
 
-function sideHandleId(type: 'source' | 'target', from: NodePlacement, to: NodePlacement): string {
+function chooseStraightEdgeHandles(
+  source: NodePlacement,
+  target: NodePlacement,
+  placements: Map<string, NodePlacement>
+): { sourceHandle: string; targetHandle: string } {
+  const preferredSourceSide = sideFor(source, target);
+  const preferredTargetSide = sideFor(target, source);
+  let sourceSide = preferredSourceSide;
+  let targetSide = preferredTargetSide;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidateSourceSide of orderedHandleSides(preferredSourceSide)) {
+    for (const candidateTargetSide of orderedHandleSides(preferredTargetSide)) {
+      const start = handlePoint(source, candidateSourceSide);
+      const end = handlePoint(target, candidateTargetSide);
+      const crossedNodeCount = countNodesCrossedBySegment(start, end, source.id, target.id, placements);
+      const length = Math.hypot(end.x - start.x, end.y - start.y);
+      const sourcePenalty = candidateSourceSide === preferredSourceSide ? 0 : 1;
+      const targetPenalty = candidateTargetSide === preferredTargetSide ? 0 : 1;
+      const score = crossedNodeCount * 100_000 + sourcePenalty * 1_000 + targetPenalty * 1_000 + length;
+
+      if (score < bestScore) {
+        sourceSide = candidateSourceSide;
+        targetSide = candidateTargetSide;
+        bestScore = score;
+      }
+    }
+  }
+
+  return {
+    sourceHandle: `source:${sourceSide}`,
+    targetHandle: `target:${targetSide}`,
+  };
+}
+
+function orderedHandleSides(preferred: HandleSide): HandleSide[] {
+  return [preferred, ...HANDLE_SIDES.filter((side) => side !== preferred)];
+}
+
+function sideFor(from: NodePlacement, to: NodePlacement): HandleSide {
   const dx = to.center.x - from.center.x;
   const dy = to.center.y - from.center.y;
 
   if (Math.abs(dx) >= Math.abs(dy)) {
-    return dx >= 0 ? `${type}:right` : `${type}:left`;
+    return dx >= 0 ? 'right' : 'left';
   }
 
-  return dy >= 0 ? `${type}:bottom` : `${type}:top`;
+  return dy >= 0 ? 'bottom' : 'top';
+}
+
+function handlePoint(placement: NodePlacement, side: HandleSide): Point {
+  if (placement.id.startsWith('relationship:')) {
+    return rotatedRelationshipHandlePoint(placement, side);
+  }
+
+  if (side === 'left') {
+    return { x: placement.center.x - placement.width / 2, y: placement.center.y };
+  }
+
+  if (side === 'right') {
+    return { x: placement.center.x + placement.width / 2, y: placement.center.y };
+  }
+
+  if (side === 'top') {
+    return { x: placement.center.x, y: placement.center.y - placement.height / 2 };
+  }
+
+  return { x: placement.center.x, y: placement.center.y + placement.height / 2 };
+}
+
+function rotatedRelationshipHandlePoint(placement: NodePlacement, side: HandleSide): Point {
+  const offset =
+    side === 'left'
+      ? { x: -placement.width / 2, y: 0 }
+      : side === 'right'
+        ? { x: placement.width / 2, y: 0 }
+        : side === 'top'
+          ? { x: 0, y: -placement.height / 2 }
+          : { x: 0, y: placement.height / 2 };
+  const angle = Math.PI / 4;
+  const rotatedOffset = {
+    x: offset.x * Math.cos(angle) - offset.y * Math.sin(angle),
+    y: offset.x * Math.sin(angle) + offset.y * Math.cos(angle),
+  };
+
+  return {
+    x: placement.center.x + rotatedOffset.x,
+    y: placement.center.y + rotatedOffset.y,
+  };
+}
+
+function countNodesCrossedBySegment(
+  start: Point,
+  end: Point,
+  sourceId: string,
+  targetId: string,
+  placements: Map<string, NodePlacement>
+): number {
+  return [...placements.values()].filter(
+    (placement) =>
+      placement.id !== sourceId &&
+      placement.id !== targetId &&
+      segmentIntersectsRect(start, end, rectWithClearance(placement))
+  ).length;
+}
+
+function segmentIntersectsRect(start: Point, end: Point, rect: Rect): boolean {
+  if (pointInsideRect(start, rect) || pointInsideRect(end, rect)) {
+    return true;
+  }
+
+  return [
+    [{ x: rect.left, y: rect.top }, { x: rect.right, y: rect.top }],
+    [{ x: rect.right, y: rect.top }, { x: rect.right, y: rect.bottom }],
+    [{ x: rect.right, y: rect.bottom }, { x: rect.left, y: rect.bottom }],
+    [{ x: rect.left, y: rect.bottom }, { x: rect.left, y: rect.top }],
+  ].some(([rectStart, rectEnd]) => segmentsIntersect(start, end, rectStart, rectEnd));
+}
+
+function pointInsideRect(point: Point, rect: Rect): boolean {
+  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+}
+
+function segmentsIntersect(firstStart: Point, firstEnd: Point, secondStart: Point, secondEnd: Point): boolean {
+  const firstDirection = direction(firstStart, firstEnd, secondStart);
+  const secondDirection = direction(firstStart, firstEnd, secondEnd);
+  const thirdDirection = direction(secondStart, secondEnd, firstStart);
+  const fourthDirection = direction(secondStart, secondEnd, firstEnd);
+
+  if (firstDirection === 0 && pointOnSegment(secondStart, firstStart, firstEnd)) {
+    return true;
+  }
+
+  if (secondDirection === 0 && pointOnSegment(secondEnd, firstStart, firstEnd)) {
+    return true;
+  }
+
+  if (thirdDirection === 0 && pointOnSegment(firstStart, secondStart, secondEnd)) {
+    return true;
+  }
+
+  if (fourthDirection === 0 && pointOnSegment(firstEnd, secondStart, secondEnd)) {
+    return true;
+  }
+
+  return firstDirection * secondDirection < 0 && thirdDirection * fourthDirection < 0;
+}
+
+function direction(origin: Point, target: Point, point: Point): number {
+  const crossProduct = (target.x - origin.x) * (point.y - origin.y) - (target.y - origin.y) * (point.x - origin.x);
+
+  if (Math.abs(crossProduct) < 0.001) {
+    return 0;
+  }
+
+  return crossProduct > 0 ? 1 : -1;
+}
+
+function pointOnSegment(point: Point, start: Point, end: Point): boolean {
+  return (
+    point.x >= Math.min(start.x, end.x) &&
+    point.x <= Math.max(start.x, end.x) &&
+    point.y >= Math.min(start.y, end.y) &&
+    point.y <= Math.max(start.y, end.y)
+  );
 }
 
 function relationPairKey(relation: RelationModel): string {
