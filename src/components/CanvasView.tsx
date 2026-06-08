@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo } from 'react';
-import { Background, Controls, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
-import type { FlowGraph } from '../diagram/react-flow-types';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Background, Controls, ReactFlow, type ReactFlowInstance, useEdgesState, useNodesState } from '@xyflow/react';
+import type { ErEdge, ErNode, FlowGraph } from '../diagram/react-flow-types';
 import { applyElkLayout } from '../diagram/layout';
 import { exportReactFlowImage } from '../export/image';
 import { ChenAttributeNode } from './ChenAttributeNode';
@@ -24,9 +24,24 @@ const ariaLabelConfig = {
   'handle.ariaLabel': '连接点',
 };
 
+const fitViewOptions = {
+  padding: 0.16,
+  minZoom: 0.05,
+  maxZoom: 1,
+};
+
 export function CanvasView({ graph }: { graph: FlowGraph }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
+  const flowRef = useRef<ReactFlowInstance<ErNode, ErEdge> | null>(null);
+
+  const fitAfterRender = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        flowRef.current?.fitView(fitViewOptions);
+      });
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +51,7 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
       if (!cancelled) {
         setNodes(layouted.nodes);
         setEdges(layouted.edges);
+        fitAfterRender();
       }
     }
 
@@ -44,7 +60,7 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
     return () => {
       cancelled = true;
     };
-  }, [graph, setEdges, setNodes]);
+  }, [fitAfterRender, graph, setEdges, setNodes]);
 
   const nodeTypes = useMemo(
     () => ({
@@ -62,7 +78,8 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
     const layouted = await applyElkLayout({ nodes, edges });
     setNodes(layouted.nodes);
     setEdges(layouted.edges);
-  }, [edges, nodes, setEdges, setNodes]);
+    fitAfterRender();
+  }, [edges, fitAfterRender, nodes, setEdges, setNodes]);
 
   return (
     <div className="canvas-wrap">
@@ -70,10 +87,10 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
         <button type="button" onClick={autoLayout}>
           自动整理
         </button>
-        <button type="button" onClick={() => exportReactFlowImage('png', 'huishengchart')}>
+        <button type="button" onClick={() => exportReactFlowImage('png', 'huishengchart', nodes)}>
           导出 PNG
         </button>
-        <button type="button" onClick={() => exportReactFlowImage('svg', 'huishengchart')}>
+        <button type="button" onClick={() => exportReactFlowImage('svg', 'huishengchart', nodes)}>
           导出 SVG
         </button>
       </div>
@@ -85,7 +102,12 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
         ariaLabelConfig={ariaLabelConfig}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onInit={(instance) => {
+          flowRef.current = instance;
+        }}
         fitView
+        fitViewOptions={fitViewOptions}
+        minZoom={0.05}
       >
         <Background />
         <Controls />
