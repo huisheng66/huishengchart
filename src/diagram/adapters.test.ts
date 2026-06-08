@@ -42,7 +42,7 @@ it('adapts the model to Crow Foot table nodes and bound relationship edges', () 
         sourceHandle: 'source:major_id',
         target: 'major',
         targetHandle: 'target:id',
-        data: expect.objectContaining({ label: 'N:1', inferred: false }),
+        data: expect.objectContaining({ label: '多对一 (N:1)', inferred: false }),
       }),
       expect.objectContaining({
         id: 'course:teacher_id->teacher:id',
@@ -70,12 +70,12 @@ it('adapts the model to Chen ER entity, attribute, and relationship nodes', () =
       expect.objectContaining({
         source: 'relationship:student:major_id->major:id',
         target: 'entity:major',
-        data: expect.objectContaining({ label: '1' }),
+        data: expect.objectContaining({ label: '一' }),
       }),
       expect.objectContaining({
         source: 'entity:student',
         target: 'relationship:student:major_id->major:id',
-        data: expect.objectContaining({ label: 'N' }),
+        data: expect.objectContaining({ label: '多' }),
       }),
     ])
   );

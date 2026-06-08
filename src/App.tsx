@@ -11,9 +11,9 @@ import { parseMySqlSafely } from './sql/parser-result';
 type Tab = 'crowFoot' | 'chen' | 'mermaid' | 'dictionary' | 'report';
 
 const tabs: Array<{ id: Tab; label: string }> = [
-  { id: 'crowFoot', label: "Crow's Foot" },
+  { id: 'crowFoot', label: "鸟爪 ER 图 (Crow's Foot)" },
   { id: 'chen', label: '陈氏 ER 图' },
-  { id: 'mermaid', label: 'Mermaid' },
+  { id: 'mermaid', label: 'Mermaid 源码' },
   { id: 'dictionary', label: '数据字典' },
   { id: 'report', label: '关系报告' },
 ];

@@ -1,10 +1,11 @@
 import type { ErModel, RelationModel, TableModel } from '../domain/er-model';
+import { cardinalityEdgeLabel } from '../domain/display-labels';
 import type { ErEdge, ErNode, FlowGraph } from './react-flow-types';
 
 const TABLE_WIDTH = 260;
-const TABLE_HEADER_HEIGHT = 42;
-const TABLE_ROW_HEIGHT = 28;
-const TABLE_VERTICAL_GAP = 170;
+const TABLE_HEADER_HEIGHT = 56;
+const TABLE_ROW_HEIGHT = 42;
+const TABLE_VERTICAL_GAP = 230;
 
 export function toCrowFootFlow(model: ErModel): FlowGraph {
   return {
@@ -34,7 +35,7 @@ function toRelationshipEdge(relation: RelationModel): ErEdge {
     targetHandle: columnHandleId('target', relation.targetColumnIds),
     data: {
       relation,
-      label: edgeLabel(relation),
+      label: cardinalityEdgeLabel(relation.cardinality),
       inferred: relation.source !== 'foreign-key',
     },
   };
@@ -42,18 +43,4 @@ function toRelationshipEdge(relation: RelationModel): ErEdge {
 
 function columnHandleId(side: 'source' | 'target', columnIds: string[]): string {
   return `${side}:${columnIds.join('|')}`;
-}
-
-function edgeLabel(relation: RelationModel): string {
-  switch (relation.cardinality) {
-    case 'one-to-one':
-      return '1:1';
-    case 'one-to-many':
-      return '1:N';
-    case 'many-to-many':
-      return 'N:N';
-    case 'many-to-one':
-    default:
-      return 'N:1';
-  }
 }

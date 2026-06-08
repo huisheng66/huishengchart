@@ -159,11 +159,29 @@ textarea {
 }
 
 .table-node__header {
-  padding: 10px 12px;
+  display: grid;
+  gap: 2px;
+  padding: 9px 12px;
   color: #ffffff;
   background: #1d4ed8;
+}
+
+.table-node__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 700;
+}
+
+.table-node__subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #dbeafe;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .table-node__row {
@@ -171,22 +189,42 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  min-height: 28px;
+  min-height: 42px;
   align-items: center;
-  padding: 5px 12px;
+  padding: 6px 12px;
   border-top: 1px solid #e2e8f0;
   font-size: 12px;
 }
 
 .table-node__column {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.table-node__column-main,
+.table-node__column-sub {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.table-node__meta {
+.table-node__column-main {
+  color: #172033;
+  font-weight: 600;
+}
+
+.table-node__column-sub {
   color: #64748b;
-  font-size: 11px;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 10px;
+}
+
+.table-node__meta {
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .table-node__handle {
@@ -197,35 +235,58 @@ textarea {
 }
 
 .chen-entity {
-  min-width: 150px;
-  min-height: 56px;
+  min-width: 170px;
+  min-height: 64px;
   display: grid;
   place-items: center;
+  padding: 8px 14px;
   border: 2px solid #1d4ed8;
   background: #ffffff;
   font-weight: 700;
 }
 
 .chen-attribute {
-  min-width: 132px;
-  min-height: 46px;
+  min-width: 150px;
+  min-height: 58px;
   display: grid;
   place-items: center;
+  padding: 8px 14px;
   border: 2px solid #64748b;
   border-radius: 999px;
   background: #ffffff;
   font-size: 12px;
 }
 
-.chen-attribute--key span {
+.chen-node-label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+}
+
+.chen-node-label > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chen-node-label__sub {
+  color: #64748b;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.chen-attribute--key .chen-node-label > span:first-child {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
 
 .chen-relationship {
-  width: 104px;
-  height: 104px;
+  width: 112px;
+  height: 112px;
   display: grid;
   place-items: center;
   transform: rotate(45deg);
@@ -234,11 +295,12 @@ textarea {
 }
 
 .chen-relationship span {
-  max-width: 70px;
+  max-width: 78px;
   transform: rotate(-45deg);
   overflow-wrap: anywhere;
   text-align: center;
   font-size: 11px;
+  font-weight: 700;
 }
 
 .edge-label {

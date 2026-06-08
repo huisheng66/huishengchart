@@ -10,11 +10,15 @@ it('generates editable Crow Foot and Chen ER views from SQL', async () => {
 
   await userEvent.click(screen.getByRole('button', { name: '生成' }));
 
-  expect(screen.getByRole('tab', { name: "Crow's Foot" })).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: "鸟爪 ER 图 (Crow's Foot)" })).toBeInTheDocument();
   expect(screen.getByRole('tab', { name: '陈氏 ER 图' })).toBeInTheDocument();
+  expect(screen.getByText('学生表')).toBeInTheDocument();
   expect(screen.getByText('student')).toBeInTheDocument();
+  expect(screen.getAllByText('主键').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('外键').length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: '放大' })).toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole('tab', { name: 'Mermaid' }));
+  await userEvent.click(screen.getByRole('tab', { name: 'Mermaid 源码' }));
   expect(screen.getByText(/erDiagram/)).toBeInTheDocument();
   expect(screen.getByText(/major_id FK/)).toBeInTheDocument();
 
@@ -30,5 +34,5 @@ it('shows parser errors without replacing the current workspace', async () => {
   await userEvent.click(screen.getByRole('button', { name: '生成' }));
 
   expect(screen.getByRole('alert')).toHaveTextContent(/closing parenthesis|No CREATE TABLE|SQL parse|CREATE TABLE/i);
-  expect(screen.queryByRole('tab', { name: "Crow's Foot" })).not.toBeInTheDocument();
+  expect(screen.queryByRole('tab', { name: "鸟爪 ER 图 (Crow's Foot)" })).not.toBeInTheDocument();
 });

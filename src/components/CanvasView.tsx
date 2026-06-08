@@ -9,6 +9,21 @@ import { ChenRelationshipNode } from './ChenRelationshipNode';
 import { RelationshipEdge } from './RelationshipEdge';
 import { TableNode } from './TableNode';
 
+const ariaLabelConfig = {
+  'node.a11yDescription.default': '按回车或空格选择节点，按删除键移除节点，按 Esc 取消选择。',
+  'node.a11yDescription.keyboardDisabled': '按回车或空格选择节点，然后可用方向键移动节点；按删除键移除节点，按 Esc 取消选择。',
+  'node.a11yDescription.ariaLiveMessage': ({ direction, x, y }: { direction: string; x: number; y: number }) =>
+    `已向${direction}移动选中节点，新位置 x: ${x}, y: ${y}`,
+  'edge.a11yDescription.default': '按回车或空格选择连线，然后可按删除键移除连线，按 Esc 取消选择。',
+  'controls.ariaLabel': '画布控制',
+  'controls.zoomIn.ariaLabel': '放大',
+  'controls.zoomOut.ariaLabel': '缩小',
+  'controls.fitView.ariaLabel': '适配视图',
+  'controls.interactive.ariaLabel': '切换画布交互',
+  'minimap.ariaLabel': '缩略图',
+  'handle.ariaLabel': '连接点',
+};
+
 export function CanvasView({ graph }: { graph: FlowGraph }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
@@ -67,6 +82,7 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        ariaLabelConfig={ariaLabelConfig}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         fitView
