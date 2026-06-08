@@ -6,3 +6,6 @@ build/
 .env
 .env.local
 *.log
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
