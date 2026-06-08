@@ -1,7 +1,4 @@
-import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ErNode, FlowGraph } from './react-flow-types';
-
-const elk = new ELK();
 
 const DEFAULT_NODE_WIDTH = 220;
 const DEFAULT_NODE_HEIGHT = 120;
@@ -16,6 +13,8 @@ type ElkChild = {
 };
 
 export async function applyElkLayout(graph: FlowGraph): Promise<FlowGraph> {
+  const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
+  const elk = new ELK();
   const layouted = await elk.layout({
     id: 'root',
     layoutOptions: {

@@ -1,5 +1,3 @@
-import { toPng, toSvg } from 'html-to-image';
-
 export type ImageType = 'png' | 'svg';
 
 export function getExportFilename(name: string, type: ImageType): string {
@@ -12,6 +10,7 @@ export async function exportReactFlowImage(type: ImageType, diagramName: string)
     throw new Error('React Flow viewport not found.');
   }
 
+  const { toPng, toSvg } = await import('html-to-image');
   const createImage = type === 'png' ? toPng : toSvg;
   const dataUrl = await createImage(viewport, {
     backgroundColor: '#ffffff',
