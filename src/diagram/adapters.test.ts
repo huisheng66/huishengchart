@@ -532,6 +532,19 @@ it('uses specific ticketing actions instead of repeated 产生 relationship diam
   ).toHaveLength(1);
 });
 
+it('keeps the ticketing Chen layout compact in a 4:3 course diagram frame', () => {
+  const graph = toChenFlow(parseMySqlToErModel(ticketingCourseSql));
+  const bounds = graphBounds(graph.nodes);
+  const width = bounds.right - bounds.left;
+  const height = bounds.bottom - bounds.top;
+  const aspectRatio = width / height;
+
+  expect(width).toBeLessThanOrEqual(2400);
+  expect(height).toBeLessThanOrEqual(1900);
+  expect(aspectRatio).toBeGreaterThan(1.2);
+  expect(aspectRatio).toBeLessThan(1.5);
+});
+
 it('keeps ticketing Chen relationship edges from crossing unrelated nodes', () => {
   const graph = toChenFlow(parseMySqlToErModel(ticketingCourseSql));
 
@@ -555,6 +568,21 @@ function centerDistance(left: ReturnType<typeof getNode>, right: ReturnType<type
   };
 
   return Math.hypot(leftCenter.x - rightCenter.x, leftCenter.y - rightCenter.y);
+}
+
+function graphBounds(nodes: ReturnType<typeof toChenFlow>['nodes']): Rect {
+  return nodes.reduce(
+    (bounds, node) => {
+      const rect = nodeRect(node);
+      return {
+        left: Math.min(bounds.left, rect.left),
+        top: Math.min(bounds.top, rect.top),
+        right: Math.max(bounds.right, rect.right),
+        bottom: Math.max(bounds.bottom, rect.bottom),
+      };
+    },
+    { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity }
+  );
 }
 
 type Graph = ReturnType<typeof toChenFlow>;

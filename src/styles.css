@@ -127,8 +127,10 @@ textarea {
 }
 
 .canvas-wrap {
-  height: calc(100vh - 150px);
-  min-height: 480px;
+  width: min(100%, calc((100vh - 150px) * 4 / 3));
+  min-width: 0;
+  height: auto;
+  aspect-ratio: 4 / 3;
   display: grid;
   grid-template-rows: 42px 1fr;
   overflow: hidden;
@@ -235,28 +237,30 @@ textarea {
 }
 
 .chen-entity {
-  min-width: 170px;
-  min-height: 64px;
+  min-width: 148px;
+  min-height: 56px;
   display: grid;
   place-items: center;
-  padding: 8px 14px;
-  border: 2px solid #1d4ed8;
+  padding: 8px 12px;
+  border: 2px solid #111827;
   background: #ffffff;
-  font-size: 18px;
-  font-weight: 700;
+  color: #020617;
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .chen-attribute {
-  min-width: 150px;
-  min-height: 58px;
+  min-width: 134px;
+  min-height: 46px;
   display: grid;
   place-items: center;
-  padding: 8px 14px;
-  border: 2px solid #64748b;
+  padding: 6px 12px;
+  border: 1.8px solid #111827;
   border-radius: 999px;
   background: #ffffff;
+  color: #020617;
   font-size: 18px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .chen-node-label {
@@ -274,7 +278,7 @@ textarea {
 }
 
 .chen-node-label__sub {
-  color: #64748b;
+  color: #475569;
   font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 11px;
   font-weight: 500;
@@ -295,32 +299,34 @@ textarea {
 }
 
 .chen-relationship {
-  width: 88px;
-  height: 88px;
+  width: 68px;
+  height: 68px;
   display: grid;
   place-items: center;
   transform: rotate(45deg);
-  border: 2px solid #b45309;
+  border: 1.8px solid #111827;
   background: #ffffff;
+  color: #020617;
 }
 
 .chen-relationship span {
-  max-width: 66px;
+  max-width: 54px;
   transform: rotate(-45deg);
   overflow-wrap: anywhere;
   text-align: center;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
 }
 
 .edge-label {
   position: absolute;
-  padding: 2px 6px;
-  border: 1px solid #cbd5e1;
+  padding: 1px 5px;
+  border: 0;
   border-radius: 4px;
-  color: #334155;
+  color: #020617;
   background: #ffffff;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
   pointer-events: all;
 }
 
@@ -369,5 +375,11 @@ textarea {
   .sql-pane {
     border-right: 0;
     border-bottom: 1px solid #dde3ee;
+  }
+
+  .canvas-wrap {
+    width: 100%;
+    min-height: 480px;
+    aspect-ratio: auto;
   }
 }

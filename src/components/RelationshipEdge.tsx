@@ -11,9 +11,9 @@ export function RelationshipEdge(props: EdgeProps) {
       <BaseEdge
         path={edgePath}
         style={{
-          stroke: inferred ? '#b45309' : '#475569',
+          stroke: '#111827',
           strokeDasharray: inferred ? '6 6' : undefined,
-          strokeWidth: 2,
+          strokeWidth: 1.8,
         }}
       />
       {data?.label ? (

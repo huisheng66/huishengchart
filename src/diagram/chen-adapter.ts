@@ -2,20 +2,20 @@ import type { ColumnModel, ErModel, RelationModel, TableModel } from '../domain/
 import { oneOrManyLabel } from '../domain/display-labels';
 import type { ErEdge, ErNode, FlowGraph } from './react-flow-types';
 
-const ENTITY_WIDTH = 170;
-const ENTITY_HEIGHT = 64;
-const ATTRIBUTE_WIDTH = 150;
-const ATTRIBUTE_HEIGHT = 58;
-const RELATIONSHIP_SIZE = 88;
+const ENTITY_WIDTH = 148;
+const ENTITY_HEIGHT = 56;
+const ATTRIBUTE_WIDTH = 134;
+const ATTRIBUTE_HEIGHT = 46;
 const CLUSTER_WIDTH = 860;
 const CLUSTER_HEIGHT = 600;
-const ATTRIBUTE_RADIUS_X = 245;
-const ATTRIBUTE_RADIUS_Y = 168;
-const ATTRIBUTE_RADIUS_STEP_X = 28;
-const ATTRIBUTE_RADIUS_STEP_Y = 20;
-const NODE_CLEARANCE = 18;
-const RELATIONSHIP_PARALLEL_GAP = 92;
-const RELATIONSHIP_AVOID_GAP = 154;
+const RELATIONSHIP_SIZE = 68;
+const ATTRIBUTE_RADIUS_X = 138;
+const ATTRIBUTE_RADIUS_Y = 98;
+const ATTRIBUTE_RADIUS_STEP_X = 18;
+const ATTRIBUTE_RADIUS_STEP_Y = 14;
+const NODE_CLEARANCE = 14;
+const RELATIONSHIP_PARALLEL_GAP = 72;
+const RELATIONSHIP_AVOID_GAP = 120;
 const MAX_ENTITY_ATTRIBUTES = 6;
 const MAX_DENSE_ENTITY_ATTRIBUTES = 2;
 const MAX_RELATIONSHIP_ATTRIBUTES = 4;
@@ -87,6 +87,7 @@ type ConceptualStyle = {
   extraRelations: RelationModel[];
   entityPositions: Record<string, Point>;
   relationPositions: Record<string, Point>;
+  attributePositions: Record<string, Record<string, Point>>;
   attributeAngles: Record<string, number[]>;
   showCardinalityLabels: boolean;
 };
@@ -181,56 +182,136 @@ const TICKETING_COLUMN_LABELS: Record<string, Record<string, string>> = {
 };
 
 const TICKETING_ENTITY_POSITIONS: Record<string, Point> = {
-  account: { x: 320, y: 560 },
-  passenger: { x: 780, y: 180 },
-  ticket_order: { x: 980, y: 560 },
-  waitlist_order: { x: 320, y: 980 },
-  notification_message: { x: 320, y: 1420 },
-  payment_record: { x: 980, y: 980 },
-  ticket: { x: 1560, y: 560 },
-  refund_record: { x: 1260, y: 1420 },
-  change_record: { x: 2040, y: 1420 },
-  train_run: { x: 2200, y: 560 },
-  run_fare: { x: 2200, y: 980 },
-  run_leg_inventory: { x: 2660, y: 1160 },
-  train: { x: 2860, y: 560 },
-  carriage: { x: 2860, y: 980 },
-  seat: { x: 2860, y: 1420 },
-  seat_type: { x: 3540, y: 1420 },
-  train_stop: { x: 3540, y: 560 },
-  station: { x: 4220, y: 560 },
+  account: { x: 180, y: 560 },
+  passenger: { x: 500, y: 240 },
+  ticket_order: { x: 500, y: 560 },
+  ticket: { x: 800, y: 560 },
+  train_run: { x: 1080, y: 560 },
+  train: { x: 1340, y: 560 },
+  train_stop: { x: 1600, y: 560 },
+  station: { x: 1900, y: 560 },
+  waitlist_order: { x: 180, y: 920 },
+  notification_message: { x: -120, y: 1320 },
+  payment_record: { x: 500, y: 920 },
+  refund_record: { x: 700, y: 1320 },
+  change_record: { x: 940, y: 1320 },
+  run_fare: { x: 1080, y: 920 },
+  run_leg_inventory: { x: 1160, y: 1320 },
+  carriage: { x: 1340, y: 920 },
+  seat: { x: 1340, y: 1320 },
+  seat_type: { x: 1700, y: 1320 },
 };
 
 const TICKETING_RELATION_POSITIONS: Record<string, Point> = {
-  'notification_message:account_id->account:id': { x: 80, y: 1140 },
-  'payment_record:order_id->ticket_order:id': { x: 980, y: 770 },
-  'refund_record:ticket_id->ticket:id': { x: 1320, y: 1140 },
-  'change_record:old_ticket_id->ticket:id': { x: 1840, y: 1040 },
-  'ticket:seat_id->seat:id': { x: 1760, y: 1220 },
-  'carriage:train_id->train:id': { x: 2860, y: 770 },
-  'run_leg_inventory:train_run_id->train_run:id': { x: 2480, y: 920 },
-  'run_leg_inventory:seat_type_id->seat_type:id': { x: 3340, y: 1050 },
+  'passenger:account_id->account:id': { x: 330, y: 470 },
+  'ticket_order:account_id->account:id': { x: 340, y: 560 },
+  'waitlist_order:account_id->account:id': { x: 180, y: 740 },
+  'notification_message:account_id->account:id': { x: -120, y: 1110 },
+  'ticket:order_id->ticket_order:id': { x: 650, y: 560 },
+  'ticket:passenger_id->passenger:id': { x: 690, y: 350 },
+  'ticket:train_run_id->train_run:id': { x: 940, y: 560 },
+  'ticket:seat_id->seat:id': { x: 800, y: 1080 },
+  'payment_record:order_id->ticket_order:id': { x: 500, y: 740 },
+  'refund_record:ticket_id->ticket:id': { x: 700, y: 940 },
+  'change_record:old_ticket_id->ticket:id': { x: 940, y: 940 },
+  'train_run:train_id->train:id': { x: 1210, y: 560 },
+  'train_stop:train_id->train:id': { x: 1470, y: 560 },
+  'train_stop:station_id->station:id': { x: 1750, y: 560 },
+  'carriage:train_id->train:id': { x: 1340, y: 740 },
+  'seat:carriage_id->carriage:id': { x: 1340, y: 1110 },
+  'seat:seat_type_id->seat_type:id': { x: 1520, y: 1320 },
+  'run_fare:train_run_id->train_run:id': { x: 1080, y: 740 },
+  'run_leg_inventory:train_run_id->train_run:id': { x: 1210, y: 1040 },
+  'run_leg_inventory:seat_type_id->seat_type:id': { x: 1450, y: 1110 },
+};
+
+const TICKETING_ATTRIBUTE_POSITIONS: Record<string, Record<string, Point>> = {
+  account: {
+    username: { x: 30, y: 430 },
+    phone: { x: 180, y: 360 },
+  },
+  passenger: {
+    name: { x: 410, y: 110 },
+    id_no: { x: 590, y: 110 },
+  },
+  ticket_order: {
+    order_no: { x: 470, y: 360 },
+    order_status: { x: 610, y: 455 },
+  },
+  ticket: {
+    ticket_no: { x: 830, y: 330 },
+    ticket_status: { x: 930, y: 430 },
+  },
+  train_run: {
+    run_date: { x: 1050, y: 360 },
+    run_status: { x: 1190, y: 470 },
+  },
+  train: {
+    train_no: { x: 1340, y: 360 },
+    train_type: { x: 1455, y: 430 },
+  },
+  train_stop: {
+    stop_index: { x: 1640, y: 410 },
+  },
+  station: {
+    station_name: { x: 1850, y: 410 },
+    city_name: { x: 2020, y: 410 },
+  },
+  waitlist_order: {
+    waitlist_no: { x: 40, y: 1060 },
+    waitlist_status: { x: 240, y: 1060 },
+  },
+  payment_record: {
+    payment_no: { x: 420, y: 1060 },
+    pay_status: { x: 580, y: 1060 },
+  },
+  refund_record: {
+    refund_no: { x: 560, y: 1640 },
+    refund_status: { x: 720, y: 1640 },
+  },
+  change_record: {
+    change_no: { x: 900, y: 1640 },
+    change_status: { x: 1080, y: 1640 },
+  },
+  notification_message: {
+    send_status: { x: -120, y: 1640 },
+  },
+  run_fare: {
+    price: { x: 1020, y: 1040 },
+  },
+  run_leg_inventory: {
+    available_count: { x: 1260, y: 1640 },
+  },
+  carriage: {
+    carriage_no: { x: 1510, y: 920 },
+  },
+  seat: {
+    seat_no: { x: 1440, y: 1640 },
+  },
+  seat_type: {
+    seat_type_name: { x: 1700, y: 1640 },
+  },
 };
 
 const TICKETING_ATTRIBUTE_ANGLES: Record<string, number[]> = {
-  account: [-165, -120],
-  passenger: [-135, -45],
-  ticket_order: [-135, -45],
-  ticket: [-90, -45],
-  train_run: [-135, -45],
-  train: [-135, -45],
+  account: [-145, -105],
+  passenger: [-125, -55],
+  ticket_order: [-115, -65],
+  ticket: [-135, -75],
+  train_run: [-90, -45],
+  train: [-125, -75],
   train_stop: [-90],
   station: [-135, -45],
-  waitlist_order: [20, 65],
+  waitlist_order: [180, 0],
   payment_record: [180, 0],
-  refund_record: [135, 45],
-  change_record: [135, 45],
+  refund_record: [-135, -45],
+  change_record: [-135, -45],
   notification_message: [-90],
-  run_fare: [45],
-  run_leg_inventory: [0],
-  carriage: [0],
-  seat: [180],
-  seat_type: [-90],
+  run_fare: [-45],
+  run_leg_inventory: [135],
+  carriage: [45],
+  seat: [90],
+  seat_type: [90],
 };
 
 export function toChenFlow(model: ErModel): FlowGraph {
@@ -269,7 +350,11 @@ export function toChenFlow(model: ErModel): FlowGraph {
 
     const displayTable = displayTableFor(table, conceptualStyle);
     const conceptualColumns = selectEntityAttributes(table, denseDiagram, conceptualStyle);
-    const attributePositions = placeAttributes(entityPlacement.center, conceptualColumns.length, conceptualStyle?.attributeAngles[table.id]);
+    const fallbackAttributePositions = placeAttributes(entityPlacement.center, conceptualColumns.length, conceptualStyle?.attributeAngles[table.id]);
+    const attributePositions = conceptualColumns.map((column, columnIndex) => {
+      const configuredCenter = conceptualStyle?.attributePositions[table.id]?.[column.id];
+      return configuredCenter ? centerToPosition(configuredCenter, ATTRIBUTE_WIDTH, ATTRIBUTE_HEIGHT) : fallbackAttributePositions[columnIndex];
+    });
 
     conceptualColumns.forEach((column, columnIndex) => {
       const attributeId = attributeNodeId(table.id, column.id);
@@ -530,6 +615,7 @@ function detectConceptualStyle(model: ErModel): ConceptualStyle | null {
     extraRelations: [],
     entityPositions: TICKETING_ENTITY_POSITIONS,
     relationPositions: TICKETING_RELATION_POSITIONS,
+    attributePositions: TICKETING_ATTRIBUTE_POSITIONS,
     attributeAngles: TICKETING_ATTRIBUTE_ANGLES,
     showCardinalityLabels: true,
   };
