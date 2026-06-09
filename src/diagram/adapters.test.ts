@@ -510,10 +510,26 @@ it('uses the course-style conceptual Chen model for the high-speed ticketing sch
     ])
   );
   expect(accountAttributes).toEqual(['用户名', '手机号']);
-  expect(relationshipNames).toEqual(expect.arrayContaining(['创建', '维护', '包含', '对应', '形成', '分配', '定义', '接收', '产生']));
+  expect(relationshipNames).toEqual(expect.arrayContaining(['创建', '维护', '包含', '对应', '形成', '分配', '定义', '接收', '支付', '退票', '改签']));
   expect(relationshipNames).not.toEqual(expect.arrayContaining(['账号', '乘车人', '列车开行实例']));
   expect(edgeLabels).toEqual(expect.arrayContaining(['1', 'n', '0..1', '0..n', 'm']));
   expect(findNodeOverlaps(graph.nodes)).toEqual([]);
+});
+
+it('uses specific ticketing actions instead of repeated 产生 relationship diamonds', () => {
+  const graph = toChenFlow(parseMySqlToErModel(ticketingCourseSql));
+  const relationships = graph.nodes
+    .filter((node) => node.type === 'chenRelationship')
+    .map((node) => (node.data as { relation?: RelationModel }).relation)
+    .filter((relation): relation is RelationModel => Boolean(relation));
+
+  expect(relationships.filter((relation) => relation.name === '产生')).toHaveLength(0);
+  expect(relationships.filter((relation) => relation.name === '支付')).toHaveLength(1);
+  expect(relationships.filter((relation) => relation.name === '退票')).toHaveLength(1);
+  expect(relationships.filter((relation) => relation.name === '改签')).toHaveLength(1);
+  expect(
+    relationships.filter((relation) => relation.sourceTableId === 'change_record' && relation.targetTableId === 'ticket')
+  ).toHaveLength(1);
 });
 
 it('keeps ticketing Chen relationship edges from crossing unrelated nodes', () => {

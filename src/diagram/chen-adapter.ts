@@ -203,6 +203,9 @@ const TICKETING_ENTITY_POSITIONS: Record<string, Point> = {
 
 const TICKETING_RELATION_POSITIONS: Record<string, Point> = {
   'notification_message:account_id->account:id': { x: 80, y: 1140 },
+  'payment_record:order_id->ticket_order:id': { x: 980, y: 770 },
+  'refund_record:ticket_id->ticket:id': { x: 1320, y: 1140 },
+  'change_record:old_ticket_id->ticket:id': { x: 1840, y: 1040 },
   'ticket:seat_id->seat:id': { x: 1760, y: 1220 },
   'carriage:train_id->train:id': { x: 2860, y: 770 },
   'run_leg_inventory:train_run_id->train_run:id': { x: 2480, y: 920 },
@@ -506,10 +509,9 @@ function detectConceptualStyle(model: ErModel): ConceptualStyle | null {
   addRelation('ticket', ['passenger_id'], 'passenger', '对应', 'n', '1');
   addRelation('ticket', ['train_run_id'], 'train_run', '对应', 'n', '1');
   addRelation('ticket', ['seat_id'], 'seat', '维护', '0..n', '0..1');
-  addRelation('payment_record', ['order_id'], 'ticket_order', '产生', '0..n', '1');
-  addRelation('refund_record', ['ticket_id'], 'ticket', '产生', '0..1', '1');
-  addRelation('change_record', ['old_ticket_id'], 'ticket', '产生', '0..1', '1');
-  addRelation('change_record', ['new_ticket_id'], 'ticket', '产生', '0..1', '1');
+  addRelation('payment_record', ['order_id'], 'ticket_order', '支付', '0..n', '1');
+  addRelation('refund_record', ['ticket_id'], 'ticket', '退票', '0..1', '1');
+  addRelation('change_record', ['old_ticket_id'], 'ticket', '改签', '0..1', '1');
   addRelation('train_run', ['train_id'], 'train', '形成', 'n', '1');
   addRelation('train_stop', ['train_id'], 'train', '包含', 'n', '1');
   addRelation('train_stop', ['station_id'], 'station', '对应', 'n', '1');
