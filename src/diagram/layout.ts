@@ -100,10 +100,10 @@ async function applyChenElkLayout(graph: FlowGraph): Promise<FlowGraph> {
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': 'RIGHT',
-      'elk.spacing.nodeNode': '90',
-      'elk.spacing.edgeNode': '48',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '140',
-      'elk.layered.spacing.edgeNodeBetweenLayers': '56',
+      'elk.spacing.nodeNode': '420',
+      'elk.spacing.edgeNode': '240',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '420',
+      'elk.layered.spacing.edgeNodeBetweenLayers': '180',
       'elk.edgeRouting': 'ORTHOGONAL',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
     },
@@ -142,39 +142,10 @@ async function applyChenElkLayout(graph: FlowGraph): Promise<FlowGraph> {
       .map((node) => [node.id, node])
   );
 
-  const layoutedAttributeNodes = attributeNodes.map((node) => {
-    const match = node.id.match(/^attribute:([^:]+):/);
-    if (!match) {
-      return node;
-    }
-
-    const entityId = `entity:${match[1]}`;
-    const entityNode = entityNodeMap.get(entityId);
-    if (!entityNode) {
-      return node;
-    }
-
-    const entityCenter = {
-      x: entityNode.position.x + (entityNode.width ?? DEFAULT_NODE_WIDTH) / 2,
-      y: entityNode.position.y + (entityNode.height ?? DEFAULT_NODE_HEIGHT) / 2,
-    };
-    const positions = placeAttributesAround(
-      entityCenter,
-      1,
-      entityNode.width ?? DEFAULT_NODE_WIDTH,
-      entityNode.height ?? DEFAULT_NODE_HEIGHT
-    );
-
-    return {
-      ...node,
-      position: positions[0],
-    };
-  });
-
-  const layoutedAttributeByEntity = groupAttributesByEntity(layoutedAttributeNodes);
+  const attributesByEntity = groupAttributesByEntity(attributeNodes);
   const reAttributed: ErNode[] = [];
 
-  layoutedAttributeByEntity.forEach((attributes, entityId) => {
+  attributesByEntity.forEach((attributes, entityId) => {
     const entityNode = entityNodeMap.get(entityId);
     if (!entityNode) {
       attributes.forEach((attr) => reAttributed.push(attr));
