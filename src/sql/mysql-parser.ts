@@ -22,8 +22,9 @@ type PendingForeignKey = {
 };
 
 export function parseMySqlToErModel(sql: string): ErModel {
+  const cleanedSql = stripSqlComments(sql);
   const model = createEmptyErModel();
-  const blocks = extractCreateTableBlocks(sql);
+  const blocks = extractCreateTableBlocks(cleanedSql);
   const pendingForeignKeys: PendingForeignKey[] = [];
   const tableNames = new Set<string>();
 
@@ -33,7 +34,7 @@ export function parseMySqlToErModel(sql: string): ErModel {
     tableNames.add(table.name);
   }
 
-  pendingForeignKeys.push(...extractAlterTableForeignKeys(sql));
+  pendingForeignKeys.push(...extractAlterTableForeignKeys(cleanedSql));
 
   const declaredRelationKeys = new Set<string>();
 
@@ -51,6 +52,44 @@ export function parseMySqlToErModel(sql: string): ErModel {
   model.inferredRelations = inferRelations(model, declaredRelationKeys);
 
   return model;
+}
+
+function stripSqlComments(sql: string): string {
+  const output: string[] = [];
+  let index = 0;
+  let inSingleQuote = false;
+
+  while (index < sql.length) {
+    const char = sql[index];
+    const nextChar = sql[index + 1] ?? '';
+
+    if (char === "'" && (index === 0 || sql[index - 1] !== '\\')) {
+      inSingleQuote = !inSingleQuote;
+      output.push(char);
+      index++;
+      continue;
+    }
+
+    if (!inSingleQuote) {
+      if (char === '-' && nextChar === '-') {
+        const endOfLine = sql.indexOf('\n', index + 2);
+        index = endOfLine >= 0 ? endOfLine + 1 : sql.length;
+        output.push('\n');
+        continue;
+      }
+
+      if (char === '/' && nextChar === '*') {
+        const endOfBlock = sql.indexOf('*/', index + 2);
+        index = endOfBlock >= 0 ? endOfBlock + 2 : sql.length;
+        continue;
+      }
+    }
+
+    output.push(char);
+    index++;
+  }
+
+  return output.join('');
 }
 
 function extractCreateTableBlocks(sql: string): CreateTableBlock[] {

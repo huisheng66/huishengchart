@@ -78,20 +78,34 @@ export async function exportReactFlowImage(type: ImageType, diagramName: string,
     throw new Error('React Flow viewport not found.');
   }
 
-  const { toPng, toSvg } = await import('html-to-image');
-  const createImage = type === 'png' ? toPng : toSvg;
-  const exportOptions = buildFullDiagramExportOptions(nodes);
-  const dataUrl = await createImage(viewport, {
-    backgroundColor: '#ffffff',
-    pixelRatio: 2,
-    skipFonts: true,
-    width: exportOptions.width,
-    height: exportOptions.height,
-    style: exportOptions.style,
+  const selectedElements = viewport.querySelectorAll('.selected');
+  const removedClasses: Array<{ element: Element; classes: string[] }> = [];
+  selectedElements.forEach((element) => {
+    const classes = element.className.split(' ').filter((cls) => cls === 'selected');
+    if (classes.length > 0) {
+      removedClasses.push({ element, classes });
+      element.classList.remove('selected');
+    }
   });
 
-  const link = document.createElement('a');
-  link.download = getExportFilename(diagramName, type);
-  link.href = dataUrl;
-  link.click();
+  try {
+    const { toPng, toSvg } = await import('html-to-image');
+    const createImage = type === 'png' ? toPng : toSvg;
+    const exportOptions = buildFullDiagramExportOptions(nodes);
+    const dataUrl = await createImage(viewport, {
+      backgroundColor: '#ffffff',
+      pixelRatio: 2,
+      skipFonts: true,
+      width: exportOptions.width,
+      height: exportOptions.height,
+      style: exportOptions.style,
+    });
+
+    const link = document.createElement('a');
+    link.download = getExportFilename(diagramName, type);
+    link.href = dataUrl;
+    link.click();
+  } finally {
+    removedClasses.forEach(({ element }) => element.classList.add('selected'));
+  }
 }

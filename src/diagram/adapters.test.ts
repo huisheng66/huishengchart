@@ -402,7 +402,7 @@ it('adapts the model to Chen ER entity, attribute, and relationship nodes', () =
       }),
     ])
   );
-  expect(graph.layoutStrategy).toBe('manual');
+  expect(graph.layoutStrategy).toBe('elk');
   expect(graph.nodes.find((node) => node.id === 'attribute:student:major_id')).toBeUndefined();
   expect(new Set(studentAttributes.map((node) => node.position.x)).size).toBeGreaterThan(1);
   expect(new Set(studentAttributes.map((node) => node.position.y)).size).toBeGreaterThan(1);

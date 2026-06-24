@@ -5,7 +5,7 @@ export type DisplayLabel = {
   secondary?: string;
 };
 
-const CJK_TEXT = /[\u3400-\u9fff]/u;
+const CJK_TEXT = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]/u;
 
 export function tableDisplayLabel(table: TableModel): DisplayLabel {
   const readableName = table.displayName && table.displayName !== table.name ? table.displayName : table.comment;
