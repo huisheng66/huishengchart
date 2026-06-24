@@ -281,7 +281,7 @@ export function toChenFlow(model: ErModel): FlowGraph {
   return {
     nodes,
     edges,
-    layoutStrategy: conceptualStyle ? 'manual' : 'elk',
+    layoutStrategy: 'manual',
   };
 }
 
