@@ -144,3 +144,41 @@ it('strips mixed comment styles in one SQL block', () => {
   expect(model.tables).toHaveLength(1);
   expect(model.tables[0].columns).toHaveLength(3);
 });
+
+it('parses ON DELETE CASCADE and ON UPDATE SET NULL', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`major\` (
+    \`id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
+  CREATE TABLE \`student\` (
+    \`id\` BIGINT NOT NULL,
+    \`major_id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`),
+    CONSTRAINT \`fk_student_major\` FOREIGN KEY (\`major_id\`) REFERENCES \`major\`(\`id\`)
+      ON DELETE CASCADE ON UPDATE SET NULL
+  );`);
+
+  expect(model.relations[0].onDelete).toBe('CASCADE');
+  expect(model.relations[0].onUpdate).toBe('SET NULL');
+});
+
+it('parses ALTER TABLE ADD FOREIGN KEY with ON DELETE', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`major\` (
+    \`id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
+  CREATE TABLE \`student\` (
+    \`id\` BIGINT NOT NULL,
+    \`major_id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
+  ALTER TABLE \`student\`
+    ADD CONSTRAINT \`fk_student_major\`
+    FOREIGN KEY (\`major_id\`) REFERENCES \`major\`(\`id\`)
+    ON DELETE RESTRICT;`);
+
+  expect(model.relations[0].onDelete).toBe('RESTRICT');
+});

@@ -61,5 +61,12 @@ function keyMarkers(column: { isPrimaryKey: boolean; isForeignKey: boolean; isUn
 }
 
 function formatRelation(relation: RelationModel): string {
-  return `- ${relation.sourceTableId}.${relation.sourceColumnIds.join(', ')} -> ${relation.targetTableId}.${relation.targetColumnIds.join(', ')} (${relation.name})`;
+  const actions = [
+    relation.onDelete ? `ON DELETE ${relation.onDelete}` : '',
+    relation.onUpdate ? `ON UPDATE ${relation.onUpdate}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const actionSuffix = actions ? ` (${actions})` : '';
+  return `- ${relation.sourceTableId}.${relation.sourceColumnIds.join(', ')} -> ${relation.targetTableId}.${relation.targetColumnIds.join(', ')} (${relation.name})${actionSuffix}`;
 }

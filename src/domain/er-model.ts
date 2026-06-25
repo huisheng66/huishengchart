@@ -40,6 +40,8 @@ export type RelationModel = {
   confidence?: number;
   reason?: string;
   status?: InferenceStatus;
+  onDelete?: 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'RESTRICT' | 'SET DEFAULT' | undefined;
+  onUpdate?: 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'RESTRICT' | 'SET DEFAULT' | undefined;
 };
 
 export type DiagramNodeLayout = {

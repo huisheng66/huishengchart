@@ -19,6 +19,8 @@ type PendingForeignKey = {
   sourceColumnNames: string[];
   targetTableName: string;
   targetColumnNames: string[];
+  onDelete?: 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'RESTRICT' | 'SET DEFAULT' | undefined;
+  onUpdate?: 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'SET DEFAULT' | 'RESTRICT' | undefined;
 };
 
 export function parseMySqlToErModel(sql: string): ErModel {
@@ -219,20 +221,25 @@ function parseTableConstraint(
 
 function parseForeignKeyConstraint(definition: string, sourceTableName: string): PendingForeignKey | null {
   const match = definition.match(
-    /^(?:constraint\s+(`[^`]+`|[a-zA-Z_][\w$]*)\s+)?foreign\s+key\s*\(([^)]+)\)\s+references\s+((?:`[^`]+`|[a-zA-Z_][\w$]*)(?:\s*\.\s*(?:`[^`]+`|[a-zA-Z_][\w$]*))?)\s*\(([^)]+)\)/i
+    /^(?:constraint\s+(`[^`]+`|[a-zA-Z_][\w$]*)\s+)?foreign\s+key\s*\(([^)]+)\)\s+references\s+((?:`[^`]+`|[a-zA-Z_][\w$]*)(?:\s*\.\s*(?:`[^`]+`|[a-zA-Z_][\w$]*))?)\s*\(([^)]+)\)\s*(?:on\s+delete\s+(cascade|set\s+null|no\s+action|restrict|set\s+default))?\s*(?:on\s+update\s+(cascade|set\s+null|no\s+action|restrict|set\s+default))?/i
   );
 
   if (!match) {
     return null;
   }
 
-  return {
-    name: match[1] ? normalizeIdentifier(match[1]) : `fk_${sourceTableName}_${normalizeIdentifier(match[3])}`,
-    sourceTableName,
-    sourceColumnNames: parseIdentifierList(match[2]),
-    targetTableName: normalizeIdentifier(match[3]),
-    targetColumnNames: parseIdentifierList(match[4]),
-  };
+    const onDeleteAction = match[5];
+    const onUpdateAction = match[6];
+
+    return {
+      name: match[1] ? normalizeIdentifier(match[1]) : `fk_${sourceTableName}_${normalizeIdentifier(match[3])}`,
+      sourceTableName,
+      sourceColumnNames: parseIdentifierList(match[2]),
+      targetTableName: normalizeIdentifier(match[3]),
+      targetColumnNames: parseIdentifierList(match[4]),
+      ...(onDeleteAction ? { onDelete: normalizeReferentialAction(onDeleteAction) } : {}),
+      ...(onUpdateAction ? { onUpdate: normalizeReferentialAction(onUpdateAction) } : {}),
+    };
 }
 
 function extractAlterTableForeignKeys(sql: string): PendingForeignKey[] {
@@ -278,6 +285,8 @@ function createForeignKeyRelation(
     ...relationInput,
     cardinality: 'many-to-one',
     source: 'foreign-key',
+    ...(foreignKey.onDelete ? { onDelete: foreignKey.onDelete } : {}),
+    ...(foreignKey.onUpdate ? { onUpdate: foreignKey.onUpdate } : {}),
   };
 }
 
@@ -395,6 +404,15 @@ function normalizeIdentifier(input: string): string {
     .map((part) => part.trim().replace(/^`|`$/g, ''));
 
   return parts[parts.length - 1] ?? '';
+}
+
+function normalizeReferentialAction(action: string): 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'RESTRICT' | 'SET DEFAULT' {
+  const normalized = action.replace(/\s+/g, ' ').trim().toUpperCase();
+  if (normalized === 'SET NULL') return 'SET NULL';
+  if (normalized === 'NO ACTION') return 'NO ACTION';
+  if (normalized === 'RESTRICT') return 'RESTRICT';
+  if (normalized === 'SET DEFAULT') return 'SET DEFAULT';
+  return 'CASCADE';
 }
 
 function findFirstKeywordIndex(input: string, keywords: string[]): number {
