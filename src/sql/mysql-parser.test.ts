@@ -118,3 +118,29 @@ it('parses foreign keys declared with ALTER TABLE after table creation', () => {
   expect(model.inferredRelations).toEqual([]);
   expect(model.tables.find((table) => table.id === 'student')?.columns.find((column) => column.id === 'major_id')?.isForeignKey).toBe(true);
 });
+
+it('strips MySQL #-style comments', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`major\` (
+    # 专业编号
+    \`id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );`);
+
+  expect(model.tables).toHaveLength(1);
+  expect(model.tables[0].columns).toHaveLength(1);
+});
+
+it('strips mixed comment styles in one SQL block', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`student\` (
+    -- 学生编号
+    \`id\` BIGINT NOT NULL,
+    # 学生姓名
+    \`name\` VARCHAR(50) NOT NULL,
+    /* 专业编号 */
+    \`major_id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );`);
+
+  expect(model.tables).toHaveLength(1);
+  expect(model.tables[0].columns).toHaveLength(3);
+});

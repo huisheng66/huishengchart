@@ -71,6 +71,13 @@ function stripSqlComments(sql: string): string {
     }
 
     if (!inSingleQuote) {
+      if (char === '#') {
+        const endOfLine = sql.indexOf('\n', index + 1);
+        index = endOfLine >= 0 ? endOfLine + 1 : sql.length;
+        output.push('\n');
+        continue;
+      }
+
       if (char === '-' && nextChar === '-') {
         const endOfLine = sql.indexOf('\n', index + 2);
         index = endOfLine >= 0 ? endOfLine + 1 : sql.length;
