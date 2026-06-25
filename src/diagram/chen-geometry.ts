@@ -310,14 +310,25 @@ function chooseStraightEdgeHandles(
   target: NodePlacement,
   placements: Map<string, NodePlacement>
 ): { sourceHandle: string; targetHandle: string } {
+  const isRelSource = source.id.startsWith('relationship:');
+  const isRelTarget = target.id.startsWith('relationship:');
   const preferredSourceSide = sideFor(source, target);
   const preferredTargetSide = sideFor(target, source);
+
+  // For relationship diamonds, only use diagonal-facing corners (preferred + opposite)
+  const sourceSides = isRelSource
+    ? [preferredSourceSide, oppositeSide(preferredSourceSide)]
+    : orderedHandleSides(preferredSourceSide);
+  const targetSides = isRelTarget
+    ? [preferredTargetSide, oppositeSide(preferredTargetSide)]
+    : orderedHandleSides(preferredTargetSide);
+
   let sourceSide = preferredSourceSide;
   let targetSide = preferredTargetSide;
   let bestScore = Number.POSITIVE_INFINITY;
 
-  for (const candidateSourceSide of orderedHandleSides(preferredSourceSide)) {
-    for (const candidateTargetSide of orderedHandleSides(preferredTargetSide)) {
+  for (const candidateSourceSide of sourceSides) {
+    for (const candidateTargetSide of targetSides) {
       const start = handlePoint(source, candidateSourceSide);
       const end = handlePoint(target, candidateTargetSide);
       const crossedNodeCount = countNodesCrossedBySegment(
@@ -349,6 +360,13 @@ function chooseStraightEdgeHandles(
 
 function orderedHandleSides(preferred: HandleSide): HandleSide[] {
   return [preferred, ...HANDLE_SIDES.filter((side) => side !== preferred)];
+}
+
+function oppositeSide(side: HandleSide): HandleSide {
+  if (side === 'left') return 'right';
+  if (side === 'right') return 'left';
+  if (side === 'top') return 'bottom';
+  return 'top';
 }
 
 function sideFor(from: NodePlacement, to: NodePlacement): HandleSide {
