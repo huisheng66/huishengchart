@@ -18,7 +18,12 @@ export function RelationshipEdge(props: EdgeProps) {
       />
       {data?.label ? (
         <EdgeLabelRenderer>
-          <div className="edge-label" style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}>
+          <div
+            className="edge-label"
+            style={{
+              transform: `translate(-50%, calc(-50% - 16px)) translate(${labelX}px, ${labelY}px)`,
+            }}
+          >
             {data.label}
           </div>
         </EdgeLabelRenderer>
