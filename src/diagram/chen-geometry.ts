@@ -1,6 +1,7 @@
 import type { RelationModel } from '../domain/er-model';
 import type { ErEdge } from './react-flow-types';
 import type { ChenEdgeData, HandleSide, NodePlacement, Point, Rect } from './chen-types';
+import { pointInsideRect, segmentsIntersect, segmentIntersectsRect, hasBoxOverlap } from './geometry-utils';
 
 export const ENTITY_WIDTH = 148;
 export const ENTITY_HEIGHT = 56;
@@ -83,15 +84,14 @@ function boxesOverlap(left: NodePlacement, right: NodePlacement): boolean {
 }
 
 export function hasOverlaps(boxes: NodePlacement[]): boolean {
-  for (let leftIndex = 0; leftIndex < boxes.length; leftIndex++) {
-    for (let rightIndex = leftIndex + 1; rightIndex < boxes.length; rightIndex++) {
-      if (boxesOverlap(boxes[leftIndex], boxes[rightIndex])) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  return hasBoxOverlap(
+    boxes.map((box) => ({
+      x: box.center.x - box.width / 2 - NODE_CLEARANCE,
+      y: box.center.y - box.height / 2 - NODE_CLEARANCE,
+      w: box.width + 2 * NODE_CLEARANCE,
+      h: box.height + 2 * NODE_CLEARANCE,
+    }))
+  );
 }
 
 export function overlapsAny(box: NodePlacement, placements: Map<string, NodePlacement>): boolean {
@@ -414,83 +414,4 @@ function countNodesCrossedBySegment(
   ).length;
 }
 
-function segmentIntersectsRect(start: Point, end: Point, rect: Rect): boolean {
-  if (pointInsideRect(start, rect) || pointInsideRect(end, rect)) {
-    return true;
-  }
 
-  return (
-    [
-      [
-        { x: rect.left, y: rect.top },
-        { x: rect.right, y: rect.top },
-      ],
-      [
-        { x: rect.right, y: rect.top },
-        { x: rect.right, y: rect.bottom },
-      ],
-      [
-        { x: rect.right, y: rect.bottom },
-        { x: rect.left, y: rect.bottom },
-      ],
-      [
-        { x: rect.left, y: rect.bottom },
-        { x: rect.left, y: rect.top },
-      ],
-    ] as Array<[Point, Point]>
-  ).some(([rectStart, rectEnd]) => segmentsIntersect(start, end, rectStart, rectEnd));
-}
-
-function pointInsideRect(point: Point, rect: Rect): boolean {
-  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
-}
-
-function segmentsIntersect(
-  firstStart: Point,
-  firstEnd: Point,
-  secondStart: Point,
-  secondEnd: Point
-): boolean {
-  const firstDirection = direction(firstStart, firstEnd, secondStart);
-  const secondDirection = direction(firstStart, firstEnd, secondEnd);
-  const thirdDirection = direction(secondStart, secondEnd, firstStart);
-  const fourthDirection = direction(secondStart, secondEnd, firstEnd);
-
-  if (firstDirection === 0 && pointOnSegment(secondStart, firstStart, firstEnd)) {
-    return true;
-  }
-
-  if (secondDirection === 0 && pointOnSegment(secondEnd, firstStart, firstEnd)) {
-    return true;
-  }
-
-  if (thirdDirection === 0 && pointOnSegment(firstStart, secondStart, secondEnd)) {
-    return true;
-  }
-
-  if (fourthDirection === 0 && pointOnSegment(firstEnd, secondStart, secondEnd)) {
-    return true;
-  }
-
-  return firstDirection * secondDirection < 0 && thirdDirection * fourthDirection < 0;
-}
-
-function direction(origin: Point, target: Point, point: Point): number {
-  const crossProduct =
-    (target.x - origin.x) * (point.y - origin.y) - (target.y - origin.y) * (point.x - origin.x);
-
-  if (Math.abs(crossProduct) < 0.001) {
-    return 0;
-  }
-
-  return crossProduct > 0 ? 1 : -1;
-}
-
-function pointOnSegment(point: Point, start: Point, end: Point): boolean {
-  return (
-    point.x >= Math.min(start.x, end.x) &&
-    point.x <= Math.max(start.x, end.x) &&
-    point.y >= Math.min(start.y, end.y) &&
-    point.y <= Math.max(start.y, end.y)
-  );
-}

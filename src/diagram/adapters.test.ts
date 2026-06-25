@@ -3,6 +3,7 @@ import type { RelationModel } from '../domain/er-model';
 import { toChenFlow } from './chen-adapter';
 import { toCrowFootFlow } from './crow-foot-adapter';
 import { findNodeOverlaps } from './layout';
+import { segmentIntersectsRect, pointInsideRect } from './geometry-utils';
 
 const sql = `CREATE TABLE \`major\` (
   \`id\` BIGINT NOT NULL,
@@ -690,63 +691,4 @@ function nodeRect(node: GraphNode, padding = 0): Rect {
   };
 }
 
-function segmentIntersectsRect(start: Point, end: Point, rect: Rect): boolean {
-  if (pointInsideRect(start, rect) || pointInsideRect(end, rect)) {
-    return true;
-  }
 
-  return [
-    [{ x: rect.left, y: rect.top }, { x: rect.right, y: rect.top }],
-    [{ x: rect.right, y: rect.top }, { x: rect.right, y: rect.bottom }],
-    [{ x: rect.right, y: rect.bottom }, { x: rect.left, y: rect.bottom }],
-    [{ x: rect.left, y: rect.bottom }, { x: rect.left, y: rect.top }],
-  ].some(([rectStart, rectEnd]) => segmentsIntersect(start, end, rectStart, rectEnd));
-}
-
-function pointInsideRect(point: Point, rect: Rect): boolean {
-  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
-}
-
-function segmentsIntersect(firstStart: Point, firstEnd: Point, secondStart: Point, secondEnd: Point): boolean {
-  const firstDirection = direction(firstStart, firstEnd, secondStart);
-  const secondDirection = direction(firstStart, firstEnd, secondEnd);
-  const thirdDirection = direction(secondStart, secondEnd, firstStart);
-  const fourthDirection = direction(secondStart, secondEnd, firstEnd);
-
-  if (firstDirection === 0 && pointOnSegment(secondStart, firstStart, firstEnd)) {
-    return true;
-  }
-
-  if (secondDirection === 0 && pointOnSegment(secondEnd, firstStart, firstEnd)) {
-    return true;
-  }
-
-  if (thirdDirection === 0 && pointOnSegment(firstStart, secondStart, secondEnd)) {
-    return true;
-  }
-
-  if (fourthDirection === 0 && pointOnSegment(firstEnd, secondStart, secondEnd)) {
-    return true;
-  }
-
-  return firstDirection * secondDirection < 0 && thirdDirection * fourthDirection < 0;
-}
-
-function direction(origin: Point, target: Point, point: Point): number {
-  const crossProduct = (target.x - origin.x) * (point.y - origin.y) - (target.y - origin.y) * (point.x - origin.x);
-
-  if (Math.abs(crossProduct) < 0.001) {
-    return 0;
-  }
-
-  return crossProduct > 0 ? 1 : -1;
-}
-
-function pointOnSegment(point: Point, start: Point, end: Point): boolean {
-  return (
-    point.x >= Math.min(start.x, end.x) &&
-    point.x <= Math.max(start.x, end.x) &&
-    point.y >= Math.min(start.y, end.y) &&
-    point.y <= Math.max(start.y, end.y)
-  );
-}

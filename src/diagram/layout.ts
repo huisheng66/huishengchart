@@ -1,4 +1,5 @@
 import type { ErNode, FlowGraph } from './react-flow-types';
+import { hasBoxOverlap, type Box } from './geometry-utils';
 
 const DEFAULT_NODE_WIDTH = 220;
 const DEFAULT_NODE_HEIGHT = 120;
@@ -241,7 +242,7 @@ function placeAttributesAround(
       })),
     ];
 
-    if (!hasOverlap(boxes)) {
+    if (!hasBoxOverlap(boxes)) {
       return positions;
     }
   }
@@ -268,24 +269,7 @@ function attributeAngles(count: number): number[] {
   );
 }
 
-type Box = { x: number; y: number; w: number; h: number };
 
-function hasOverlap(boxes: Box[]): boolean {
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
-      if (
-        boxes[i].x < boxes[j].x + boxes[j].w &&
-        boxes[i].x + boxes[i].w > boxes[j].x &&
-        boxes[i].y < boxes[j].y + boxes[j].h &&
-        boxes[i].y + boxes[i].h > boxes[j].y
-      ) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
 
 const DEFAULT_NODE_WIDTH_OVERLAP = 220;
 const DEFAULT_NODE_HEIGHT_OVERLAP = 120;
