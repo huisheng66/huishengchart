@@ -111,7 +111,7 @@ function extractCreateTableBlocks(sql: string): CreateTableBlock[] {
     const openParenIndex = createTablePattern.lastIndex - 1;
     const closeParenIndex = findMatchingParen(sql, openParenIndex);
     if (closeParenIndex < 0) {
-      throw new Error(`Cannot find closing parenthesis for CREATE TABLE ${match[1]}`);
+      throw new Error(`Cannot find closing parenthesis for CREATE TABLE ${match[1]} (near line ${countLinesUpTo(sql, match.index)})`);
     }
 
     const semicolonIndex = findStatementEnd(sql, closeParenIndex + 1);
@@ -124,7 +124,7 @@ function extractCreateTableBlocks(sql: string): CreateTableBlock[] {
   }
 
   if (blocks.length === 0 && sql.trim()) {
-    throw new Error('No CREATE TABLE statements found.');
+    throw new Error('No CREATE TABLE statements found in the SQL input.');
   }
 
   return blocks;
@@ -469,6 +469,16 @@ function splitTopLevel(input: string, separator: string): string[] {
   }
 
   return parts;
+}
+
+function countLinesUpTo(input: string, position: number): number {
+  let lines = 1;
+  for (let i = 0; i < position; i++) {
+    if (input[i] === '\n') {
+      lines++;
+    }
+  }
+  return lines;
 }
 
 function findMatchingParen(input: string, openParenIndex: number): number {

@@ -182,3 +182,11 @@ it('parses ALTER TABLE ADD FOREIGN KEY with ON DELETE', () => {
 
   expect(model.relations[0].onDelete).toBe('RESTRICT');
 });
+
+it('includes approximate line number in parse errors', () => {
+  expect(() =>
+    parseMySqlToErModel(`CREATE TABLE \`broken\` (
+      \`id\` BIGINT NOT NULL,
+    -- missing closing paren`)
+  ).toThrow(/near line/);
+});
