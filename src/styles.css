@@ -303,15 +303,24 @@ textarea {
   height: 68px;
   display: grid;
   place-items: center;
-  transform: rotate(45deg);
-  border: 1.8px solid #111827;
-  background: #ffffff;
+  position: relative;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  background: #111827;
   color: #020617;
 }
 
+.chen-relationship::after {
+  content: '';
+  position: absolute;
+  inset: 1.8px;
+  background: #ffffff;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
 .chen-relationship span {
+  position: relative;
+  z-index: 1;
   max-width: 54px;
-  transform: rotate(-45deg);
   overflow-wrap: anywhere;
   text-align: center;
   font-size: 17px;

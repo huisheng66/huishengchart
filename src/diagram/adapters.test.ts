@@ -629,10 +629,6 @@ function handlePoint(node: GraphNode, handleId?: string | null): Point {
   };
   const side = handleId?.split(':')[1];
 
-  if (node.id.startsWith('relationship:')) {
-    return rotatedRelationshipHandlePoint(center, rect, side);
-  }
-
   if (side === 'left') {
     return { x: rect.left, y: center.y };
   }
@@ -650,27 +646,6 @@ function handlePoint(node: GraphNode, handleId?: string | null): Point {
   }
 
   return center;
-}
-
-function rotatedRelationshipHandlePoint(center: Point, rect: Rect, side?: string): Point {
-  const width = rect.right - rect.left;
-  const height = rect.bottom - rect.top;
-  const offset =
-    side === 'left'
-      ? { x: -width / 2, y: 0 }
-      : side === 'right'
-        ? { x: width / 2, y: 0 }
-        : side === 'top'
-          ? { x: 0, y: -height / 2 }
-          : side === 'bottom'
-            ? { x: 0, y: height / 2 }
-            : { x: 0, y: 0 };
-  const angle = Math.PI / 4;
-
-  return {
-    x: center.x + offset.x * Math.cos(angle) - offset.y * Math.sin(angle),
-    y: center.y + offset.x * Math.sin(angle) + offset.y * Math.cos(angle),
-  };
 }
 
 function nodeRect(node: GraphNode, padding = 0): Rect {

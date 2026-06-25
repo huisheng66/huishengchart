@@ -363,10 +363,6 @@ function sideFor(from: NodePlacement, to: NodePlacement): HandleSide {
 }
 
 function handlePoint(placement: NodePlacement, side: HandleSide): Point {
-  if (placement.id.startsWith('relationship:')) {
-    return rotatedRelationshipHandlePoint(placement, side);
-  }
-
   if (side === 'left') {
     return { x: placement.center.x - placement.width / 2, y: placement.center.y };
   }
@@ -380,27 +376,6 @@ function handlePoint(placement: NodePlacement, side: HandleSide): Point {
   }
 
   return { x: placement.center.x, y: placement.center.y + placement.height / 2 };
-}
-
-function rotatedRelationshipHandlePoint(placement: NodePlacement, side: HandleSide): Point {
-  const offset =
-    side === 'left'
-      ? { x: -placement.width / 2, y: 0 }
-      : side === 'right'
-        ? { x: placement.width / 2, y: 0 }
-        : side === 'top'
-          ? { x: 0, y: -placement.height / 2 }
-          : { x: 0, y: placement.height / 2 };
-  const angle = Math.PI / 4;
-  const rotatedOffset = {
-    x: offset.x * Math.cos(angle) - offset.y * Math.sin(angle),
-    y: offset.x * Math.sin(angle) + offset.y * Math.cos(angle),
-  };
-
-  return {
-    x: placement.center.x + rotatedOffset.x,
-    y: placement.center.y + rotatedOffset.y,
-  };
 }
 
 function countNodesCrossedBySegment(
