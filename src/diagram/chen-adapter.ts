@@ -1,7 +1,7 @@
 import type { ColumnModel, ErModel, RelationModel, TableModel } from '../domain/er-model';
 import { oneOrManyLabel } from '../domain/display-labels';
-import type { ErNode, FlowGraph } from './react-flow-types';
-import type { ConceptualStyle, NodePlacement } from './chen-types';
+import type { ErEdge, ErNode, FlowGraph } from './react-flow-types';
+import type { AssociativeRelationship, ConceptualStyle, NodePlacement } from './chen-types';
 import {
   ATTRIBUTE_HEIGHT,
   ATTRIBUTE_WIDTH,
