@@ -4,6 +4,7 @@ import { toChenFlow } from './chen-adapter';
 import { toCrowFootFlow } from './crow-foot-adapter';
 import { findNodeOverlaps } from './layout';
 import { segmentIntersectsRect, pointInsideRect } from './geometry-utils';
+import type { Point, Rect } from './geometry-utils';
 
 const sql = `CREATE TABLE \`major\` (
   \`id\` BIGINT NOT NULL,
@@ -589,17 +590,7 @@ function graphBounds(nodes: ReturnType<typeof toChenFlow>['nodes']): Rect {
 type Graph = ReturnType<typeof toChenFlow>;
 type GraphNode = Graph['nodes'][number];
 
-type Point = {
-  x: number;
-  y: number;
-};
 
-type Rect = {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-};
 
 function findNodesCrossedByEdge(graph: Graph, edgeId: string): string[] {
   const edge = graph.edges.find((candidate) => candidate.id === edgeId);

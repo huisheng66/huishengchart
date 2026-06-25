@@ -1,18 +1,8 @@
 import type { ColumnModel, RelationModel, TableModel } from '../domain/er-model';
 
-export type Point = {
-  x: number;
-  y: number;
-};
+export type { Point, Rect } from './geometry-utils';
 
 export type HandleSide = 'left' | 'right' | 'top' | 'bottom';
-
-export type Rect = {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-};
 
 export type NodePlacement = {
   id: string;

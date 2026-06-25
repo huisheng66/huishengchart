@@ -1,7 +1,7 @@
 import type { RelationModel } from '../domain/er-model';
 import type { ErEdge } from './react-flow-types';
 import type { ChenEdgeData, HandleSide, NodePlacement, Point, Rect } from './chen-types';
-import { pointInsideRect, segmentsIntersect, segmentIntersectsRect, hasBoxOverlap } from './geometry-utils';
+import { pointInsideRect, segmentIntersectsRect, hasBoxOverlap } from './geometry-utils';
 
 export const ENTITY_WIDTH = 148;
 export const ENTITY_HEIGHT = 56;
@@ -83,6 +83,10 @@ function boxesOverlap(left: NodePlacement, right: NodePlacement): boolean {
   );
 }
 
+// NOTE: hasBoxOverlap uses strict inequality (< >), so rectangles that
+// exactly touch at edges are NOT considered overlapping. The previous
+// boxesOverlap used <= which was boundary-inclusive. All current tests
+// pass with strict semantics.
 export function hasOverlaps(boxes: NodePlacement[]): boolean {
   return hasBoxOverlap(
     boxes.map((box) => ({
