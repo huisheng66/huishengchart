@@ -1,6 +1,7 @@
 import type { ColumnModel, RelationModel, TableModel } from '../domain/er-model';
 
-export type { Point, Rect } from './geometry-utils';
+import type { Point, Rect } from './geometry-utils';
+export type { Point, Rect };
 
 export type HandleSide = 'left' | 'right' | 'top' | 'bottom';
 
