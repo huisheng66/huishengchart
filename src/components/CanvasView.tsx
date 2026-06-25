@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Background, Controls, ReactFlow, type ReactFlowInstance, useEdgesState, useNodesState } from '@xyflow/react';
+import type { RelationModel } from '../domain/er-model';
 import type { ErEdge, ErNode, FlowGraph } from '../diagram/react-flow-types';
 import { applyElkLayout } from '../diagram/layout';
 import { exportReactFlowImage } from '../export/image';
@@ -30,7 +31,17 @@ const fitViewOptions = {
   maxZoom: 1,
 };
 
-export function CanvasView({ graph }: { graph: FlowGraph }) {
+export function CanvasView({
+  graph,
+  inferredRelations,
+  onAcceptInferred,
+  onRejectInferred,
+}: {
+  graph: FlowGraph;
+  inferredRelations?: RelationModel[];
+  onAcceptInferred?: (id: string) => void;
+  onRejectInferred?: (id: string) => void;
+}) {
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
   const flowRef = useRef<ReactFlowInstance<ErNode, ErEdge> | null>(null);
@@ -107,6 +118,25 @@ export function CanvasView({ graph }: { graph: FlowGraph }) {
         <button type="button" onClick={() => exportReactFlowImage('svg', 'huishengchart', nodes)}>
           导出 SVG
         </button>
+              {inferredRelations && inferredRelations.filter((r) => r.status === 'pending').length > 0 ? (
+                <div className="canvas-toolbar__inferred">
+                  <span className="canvas-toolbar__inferred-label">
+                    推断关系 ({inferredRelations.filter((r) => r.status === 'pending').length})
+                  </span>
+                  <button type="button" onClick={() => {
+                    const pending = inferredRelations.filter((r) => r.status === 'pending');
+                    pending.forEach((r) => onAcceptInferred?.(r.id));
+                  }}>
+                    全部接受
+                  </button>
+                  <button type="button" onClick={() => {
+                    const pending = inferredRelations.filter((r) => r.status === 'pending');
+                    pending.forEach((r) => onRejectInferred?.(r.id));
+                  }}>
+                    全部拒绝
+                  </button>
+                </div>
+              ) : null}
       </div>
       <ReactFlow
         nodes={nodes}

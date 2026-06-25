@@ -38,6 +38,31 @@ export function App() {
     }
   }
 
+  function handleAcceptInferred(relationId: string) {
+    setModel((prev) => {
+      if (!prev) return prev;
+      const relation = prev.inferredRelations.find((r) => r.id === relationId);
+      if (!relation) return prev;
+      return {
+        ...prev,
+        relations: [...prev.relations, { ...relation, status: 'accepted' as const, source: 'rule-inferred' as const }],
+        inferredRelations: prev.inferredRelations.filter((r) => r.id !== relationId),
+      };
+    });
+  }
+
+  function handleRejectInferred(relationId: string) {
+    setModel((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        inferredRelations: prev.inferredRelations.map((r) =>
+          r.id === relationId ? { ...r, status: 'rejected' as const } : r
+        ),
+      };
+    });
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -83,8 +108,12 @@ export function App() {
               </div>
 
               <section className="tab-panel" role="tabpanel">
-                {activeTab === 'crowFoot' ? <CanvasView graph={crowFootGraph} /> : null}
-                {activeTab === 'chen' ? <CanvasView graph={chenGraph} /> : null}
+                {activeTab === 'crowFoot' ? (
+                  <CanvasView graph={crowFootGraph} inferredRelations={model.inferredRelations} onAcceptInferred={handleAcceptInferred} onRejectInferred={handleRejectInferred} />
+                ) : null}
+                {activeTab === 'chen' ? (
+                  <CanvasView graph={chenGraph} inferredRelations={model.inferredRelations} onAcceptInferred={handleAcceptInferred} onRejectInferred={handleRejectInferred} />
+                ) : null}
                 {activeTab === 'mermaid' ? <pre className="artifact">{exportMermaidEr(model)}</pre> : null}
                 {activeTab === 'dictionary' ? <pre className="artifact">{exportDataDictionaryMarkdown(model)}</pre> : null}
                 {activeTab === 'report' ? <pre className="artifact">{exportRelationshipReportMarkdown(model)}</pre> : null}
