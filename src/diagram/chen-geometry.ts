@@ -286,14 +286,32 @@ export function createStraightEdge(
   target: string,
   data: ChenEdgeData,
   placements: Map<string, NodePlacement>,
-  relAxis?: 'horizontal' | 'vertical'
+  relAxis?: 'horizontal' | 'vertical',
+  forceRelSide?: HandleSide
 ): ErEdge {
   const sourcePlacement = placements.get(source);
   const targetPlacement = placements.get(target);
-  const handles =
-    sourcePlacement && targetPlacement
+
+  let handles: { sourceHandle?: string; targetHandle?: string };
+
+  if (forceRelSide && (source.startsWith('relationship:') || target.startsWith('relationship:'))) {
+    // Force the relationship node's handle to the specified side
+    const relHandle = source.startsWith('relationship:')
+      ? `source:${forceRelSide}`
+      : `target:${forceRelSide}`;
+    // Compute the other node's handle normally
+    const autoHandles = sourcePlacement && targetPlacement
       ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements, relAxis)
       : { sourceHandle: undefined, targetHandle: undefined };
+    handles = {
+      sourceHandle: source.startsWith('relationship:') ? relHandle : autoHandles.sourceHandle,
+      targetHandle: target.startsWith('relationship:') ? relHandle : autoHandles.targetHandle,
+    };
+  } else {
+    handles = sourcePlacement && targetPlacement
+      ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements, relAxis)
+      : { sourceHandle: undefined, targetHandle: undefined };
+  }
 
   return {
     id,

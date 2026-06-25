@@ -177,13 +177,24 @@ export function toChenFlow(model: ErModel): FlowGraph {
     const sourceEntity = placements.get(sourceEntityId);
     const targetEntity = placements.get(targetEntityId);
 
-    // Determine diagonal axis: horizontal (left↔right) or vertical (top↔bottom)
-    let relAxis: 'horizontal' | 'vertical' | undefined;
+    // Pick the diagonal axis and assign corners based on entity positions
+    let sourceRelAxis: 'horizontal' | 'vertical' | undefined;
+    let sourceRelSide: HandleSide | undefined;
+    let targetRelSide: HandleSide | undefined;
 
     if (sourceEntity && targetEntity) {
       const dx = targetEntity.center.x - sourceEntity.center.x;
       const dy = targetEntity.center.y - sourceEntity.center.y;
-      relAxis = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        sourceRelAxis = 'horizontal';
+        sourceRelSide = dx >= 0 ? 'right' : 'left';
+        targetRelSide = dx >= 0 ? 'left' : 'right';
+      } else {
+        sourceRelAxis = 'vertical';
+        sourceRelSide = dy >= 0 ? 'bottom' : 'top';
+        targetRelSide = dy >= 0 ? 'top' : 'bottom';
+      }
     }
 
     edges.push({
@@ -197,7 +208,8 @@ export function toChenFlow(model: ErModel): FlowGraph {
           inferred: relation.source !== 'foreign-key',
         },
         placements,
-        relAxis
+        sourceRelAxis,
+        sourceRelSide
       ),
     });
     edges.push({
@@ -211,7 +223,8 @@ export function toChenFlow(model: ErModel): FlowGraph {
           inferred: relation.source !== 'foreign-key',
         },
         placements,
-        relAxis
+        sourceRelAxis,
+        targetRelSide
       ),
     });
   });
