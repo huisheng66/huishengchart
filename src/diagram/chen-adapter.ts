@@ -1,7 +1,7 @@
 import type { ColumnModel, ErModel, RelationModel, TableModel } from '../domain/er-model';
 import { oneOrManyLabel } from '../domain/display-labels';
 import type { ErEdge, ErNode, FlowGraph } from './react-flow-types';
-import type { AssociativeRelationship, ConceptualStyle, NodePlacement } from './chen-types';
+import type { AssociativeRelationship, ConceptualStyle, HandleSide, NodePlacement } from './chen-types';
 import {
   ATTRIBUTE_HEIGHT,
   ATTRIBUTE_WIDTH,
@@ -172,30 +172,46 @@ export function toChenFlow(model: ErModel): FlowGraph {
 
   conceptualRelations.forEach((relation) => {
     const relationshipId = relationshipNodeId(relation.id);
+    const sourceEntityId = entityNodeId(relation.sourceTableId);
+    const targetEntityId = entityNodeId(relation.targetTableId);
+    const sourceEntity = placements.get(sourceEntityId);
+    const targetEntity = placements.get(targetEntityId);
+
+    // Determine diagonal axis: horizontal (left↔right) or vertical (top↔bottom)
+    let relAxis: 'horizontal' | 'vertical' | undefined;
+
+    if (sourceEntity && targetEntity) {
+      const dx = targetEntity.center.x - sourceEntity.center.x;
+      const dy = targetEntity.center.y - sourceEntity.center.y;
+      relAxis = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
+    }
+
     edges.push({
       ...createStraightEdge(
-        `edge:${entityNodeId(relation.sourceTableId)}:${relationshipId}`,
-        entityNodeId(relation.sourceTableId),
+        `edge:${sourceEntityId}:${relationshipId}`,
+        sourceEntityId,
         relationshipId,
         {
           relation,
           label: cardinalityLabelFor(relation, 'source', showCardinalityLabels, conceptualStyle),
           inferred: relation.source !== 'foreign-key',
         },
-        placements
+        placements,
+        relAxis
       ),
     });
     edges.push({
       ...createStraightEdge(
-        `edge:${relationshipId}:${entityNodeId(relation.targetTableId)}`,
+        `edge:${relationshipId}:${targetEntityId}`,
         relationshipId,
-        entityNodeId(relation.targetTableId),
+        targetEntityId,
         {
           relation,
           label: cardinalityLabelFor(relation, 'target', showCardinalityLabels, conceptualStyle),
           inferred: relation.source !== 'foreign-key',
         },
-        placements
+        placements,
+        relAxis
       ),
     });
   });

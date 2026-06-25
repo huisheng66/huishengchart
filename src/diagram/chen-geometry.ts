@@ -285,13 +285,14 @@ export function createStraightEdge(
   source: string,
   target: string,
   data: ChenEdgeData,
-  placements: Map<string, NodePlacement>
+  placements: Map<string, NodePlacement>,
+  relAxis?: 'horizontal' | 'vertical'
 ): ErEdge {
   const sourcePlacement = placements.get(source);
   const targetPlacement = placements.get(target);
   const handles =
     sourcePlacement && targetPlacement
-      ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements)
+      ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements, relAxis)
       : { sourceHandle: undefined, targetHandle: undefined };
 
   return {
@@ -308,20 +309,25 @@ export function createStraightEdge(
 function chooseStraightEdgeHandles(
   source: NodePlacement,
   target: NodePlacement,
-  placements: Map<string, NodePlacement>
+  placements: Map<string, NodePlacement>,
+  relAxis?: 'horizontal' | 'vertical'
 ): { sourceHandle: string; targetHandle: string } {
   const isRelSource = source.id.startsWith('relationship:');
   const isRelTarget = target.id.startsWith('relationship:');
   const preferredSourceSide = sideFor(source, target);
   const preferredTargetSide = sideFor(target, source);
 
-  // For relationship diamonds, only use diagonal-facing corners (preferred + opposite)
-  const sourceSides = isRelSource
-    ? [preferredSourceSide, oppositeSide(preferredSourceSide)]
-    : orderedHandleSides(preferredSourceSide);
-  const targetSides = isRelTarget
-    ? [preferredTargetSide, oppositeSide(preferredTargetSide)]
-    : orderedHandleSides(preferredTargetSide);
+  // For relationship diamonds, restrict to the two sides on the chosen diagonal axis
+  function relSides(isRel: boolean, preferred: HandleSide): HandleSide[] {
+    if (!isRel) return orderedHandleSides(preferred);
+    if (relAxis === 'horizontal') return ['left', 'right'];
+    if (relAxis === 'vertical') return ['top', 'bottom'];
+    // Default: preferred + opposite (diagonal pair closest to preferred)
+    return [preferred, oppositeSide(preferred)];
+  }
+
+  const sourceSides = relSides(isRelSource, preferredSourceSide);
+  const targetSides = relSides(isRelTarget, preferredTargetSide);
 
   let sourceSide = preferredSourceSide;
   let targetSide = preferredTargetSide;
