@@ -186,14 +186,14 @@ export function toChenFlow(model: ErModel): FlowGraph {
       const dx = targetEntity.center.x - sourceEntity.center.x;
       const dy = targetEntity.center.y - sourceEntity.center.y;
 
-      if (Math.abs(dx) >= Math.abs(dy)) {
+      if (Math.abs(dx) > Math.abs(dy)) {
         sourceRelAxis = 'horizontal';
         sourceRelSide = dx >= 0 ? 'right' : 'left';
         targetRelSide = dx >= 0 ? 'left' : 'right';
       } else {
         sourceRelAxis = 'vertical';
-        sourceRelSide = dy >= 0 ? 'bottom' : 'top';
-        targetRelSide = dy >= 0 ? 'top' : 'bottom';
+        sourceRelSide = dy >= 0 ? 'top' : 'bottom';
+        targetRelSide = dy >= 0 ? 'bottom' : 'top';
       }
     }
 
