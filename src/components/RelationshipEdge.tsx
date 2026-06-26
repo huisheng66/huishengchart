@@ -6,6 +6,13 @@ export function RelationshipEdge(props: EdgeProps) {
   const [edgePath, labelX, labelY] = data?.edgeStyle === 'straight' ? getStraightPath(props) : getSmoothStepPath(props);
   const inferred = Boolean(data?.inferred);
 
+  // Compute perpendicular offset (16px from the line)
+  const dx = props.targetX - props.sourceX;
+  const dy = props.targetY - props.sourceY;
+  const len = Math.hypot(dx, dy) || 1;
+  const offsetX = (-dy / len) * 16;
+  const offsetY = (dx / len) * 16;
+
   return (
     <>
       <BaseEdge
@@ -21,7 +28,7 @@ export function RelationshipEdge(props: EdgeProps) {
           <div
             className="edge-label"
             style={{
-              transform: `translate(-50%, calc(-50% - 16px)) translate(${labelX}px, ${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX + offsetX}px, ${labelY + offsetY}px)`,
             }}
           >
             {data.label}
