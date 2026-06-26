@@ -330,14 +330,13 @@ textarea {
 .edge-label {
   position: absolute;
   z-index: 1000;
-  padding: 1px 5px;
-  border: 0;
-  border-radius: 4px;
+  padding: 0;
   color: #020617;
-  background: #ffffff;
+  background: transparent;
   font-size: 13px;
   font-weight: 700;
-  pointer-events: all;
+  pointer-events: none;
+  text-shadow: 0 0 4px #ffffff, 0 0 4px #ffffff;
 }
 
 .artifact {
