@@ -32,8 +32,11 @@ export function oneOrManyLabel(isMany: boolean): string {
   return isMany ? 'N' : '1';
 }
 
+const TABLE_SUFFIX = /(表|信息表|数据表|记录表|明细表|基础表|主表|从表|字典表|配置表|关系表|关联表)$/u;
+
 function readableFirstLabel(readableName: string | undefined, technicalName: string): DisplayLabel {
-  const primary = readableName?.trim() || technicalName;
+  const cleaned = readableName?.trim().replace(TABLE_SUFFIX, '');
+  const primary = cleaned || technicalName;
 
   return {
     primary,

@@ -12,7 +12,7 @@ it('generates editable Crow Foot and Chen ER views from SQL', async () => {
 
   expect(screen.getByRole('tab', { name: "鸟爪 ER 图 (Crow's Foot)" })).toBeInTheDocument();
   expect(screen.getByRole('tab', { name: '陈氏 ER 图' })).toBeInTheDocument();
-  expect(screen.getByText('学生表')).toBeInTheDocument();
+  expect(screen.getByText('学生')).toBeInTheDocument();
   expect(screen.getByText('student')).toBeInTheDocument();
   expect(screen.getAllByText('主键').length).toBeGreaterThan(0);
   expect(screen.getAllByText('外键').length).toBeGreaterThan(0);
@@ -23,7 +23,7 @@ it('generates editable Crow Foot and Chen ER views from SQL', async () => {
   expect(screen.getByText(/major_id FK/)).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole('tab', { name: '数据字典' }));
-  expect(within(screen.getByRole('tabpanel')).getByText(/学生表/)).toBeInTheDocument();
+  expect(within(screen.getByRole('tabpanel')).getByText(/学生/)).toBeInTheDocument();
 });
 
 it('shows parser errors without replacing the current workspace', async () => {

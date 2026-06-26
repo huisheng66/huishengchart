@@ -48,12 +48,12 @@ function relation(overrides: Partial<RelationModel> = {}): RelationModel {
 describe('tableDisplayLabel', () => {
   it('uses comment as primary label when available', () => {
     const result = tableDisplayLabel(table({ comment: '学生表' }));
-    expect(result).toEqual({ primary: '学生表', secondary: 'student' });
+    expect(result).toEqual({ primary: '学生', secondary: 'student' });
   });
 
   it('uses displayName when different from name', () => {
     const result = tableDisplayLabel(table({ name: 't_student', displayName: '学生表' }));
-    expect(result).toEqual({ primary: '学生表', secondary: 't_student' });
+    expect(result).toEqual({ primary: '学生', secondary: 't_student' });
   });
 
   it('falls back to name when no readable label exists', () => {
@@ -65,7 +65,7 @@ describe('tableDisplayLabel', () => {
     const result = tableDisplayLabel(
       table({ name: 't_student', displayName: '学生表', comment: '学生信息表' })
     );
-    expect(result).toEqual({ primary: '学生表', secondary: 't_student' });
+    expect(result).toEqual({ primary: '学生', secondary: 't_student' });
   });
 });
 
