@@ -188,8 +188,8 @@ export function toChenFlow(model: ErModel): FlowGraph {
 
       if (Math.abs(dx) > Math.abs(dy)) {
         sourceRelAxis = 'horizontal';
-        sourceRelSide = dx >= 0 ? 'right' : 'left';
-        targetRelSide = dx >= 0 ? 'left' : 'right';
+        sourceRelSide = dx >= 0 ? 'left' : 'right';
+        targetRelSide = dx >= 0 ? 'right' : 'left';
       } else {
         sourceRelAxis = 'vertical';
         sourceRelSide = dy >= 0 ? 'top' : 'bottom';
