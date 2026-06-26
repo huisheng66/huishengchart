@@ -16,13 +16,16 @@ CREATE TABLE \`student\` (
   \`id\` BIGINT NOT NULL AUTO_INCREMENT COMMENT '学生编号',
   \`name\` VARCHAR(50) NOT NULL COMMENT '学生姓名',
   \`major_id\` BIGINT NOT NULL COMMENT '专业编号',
+  \`teacher_id\` BIGINT COMMENT '导师编号',
   PRIMARY KEY (\`id\`),
-  CONSTRAINT \`fk_student_major\` FOREIGN KEY (\`major_id\`) REFERENCES \`major\`(\`id\`)
+  CONSTRAINT \`fk_student_major\` FOREIGN KEY (\`major_id\`) REFERENCES \`major\`(\`id\`),
+  CONSTRAINT \`fk_student_teacher\` FOREIGN KEY (\`teacher_id\`) REFERENCES \`teacher\`(\`id\`)
 ) ENGINE=InnoDB COMMENT='学生表';
 
 CREATE TABLE \`course\` (
   \`id\` BIGINT NOT NULL AUTO_INCREMENT COMMENT '课程编号',
   \`title\` VARCHAR(100) NOT NULL COMMENT '课程名称',
   \`teacher_id\` BIGINT COMMENT '教师编号',
-  PRIMARY KEY (\`id\`)
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_course_teacher\` FOREIGN KEY (\`teacher_id\`) REFERENCES \`teacher\`(\`id\`)
 ) ENGINE=InnoDB COMMENT='课程表';`;

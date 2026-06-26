@@ -25,11 +25,11 @@ export function relationshipDisplayLabel(relation: RelationModel): string {
 }
 
 export function cardinalityEdgeLabel(cardinality: Cardinality): string {
-  return `${cardinalityPhrase(cardinality)} (${cardinalityNotation(cardinality)})`;
+  return cardinalityNotation(cardinality);
 }
 
 export function oneOrManyLabel(isMany: boolean): string {
-  return isMany ? '多' : '一';
+  return isMany ? 'N' : '1';
 }
 
 function readableFirstLabel(readableName: string | undefined, technicalName: string): DisplayLabel {

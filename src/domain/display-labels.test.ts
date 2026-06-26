@@ -92,21 +92,21 @@ describe('relationshipDisplayLabel', () => {
 });
 
 describe('cardinalityEdgeLabel', () => {
-  it('formats one-to-many with Chinese and notation', () => {
-    expect(cardinalityEdgeLabel('one-to-many')).toBe('一对多 (1:N)');
+  it('returns 1:N for one-to-many', () => {
+    expect(cardinalityEdgeLabel('one-to-many')).toBe('1:N');
   });
 
-  it('formats many-to-many with Chinese and notation', () => {
-    expect(cardinalityEdgeLabel('many-to-many')).toBe('多对多 (N:N)');
+  it('returns N:N for many-to-many', () => {
+    expect(cardinalityEdgeLabel('many-to-many')).toBe('N:N');
   });
 });
 
 describe('oneOrManyLabel', () => {
-  it('returns 一 when not many', () => {
-    expect(oneOrManyLabel(false)).toBe('一');
+  it('returns 1 when not many', () => {
+    expect(oneOrManyLabel(false)).toBe('1');
   });
 
-  it('returns 多 when many', () => {
-    expect(oneOrManyLabel(true)).toBe('多');
+  it('returns N when many', () => {
+    expect(oneOrManyLabel(true)).toBe('N');
   });
 });
