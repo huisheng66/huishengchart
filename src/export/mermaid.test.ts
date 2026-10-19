@@ -22,3 +22,28 @@ it('exports Mermaid ER source with PK and FK markers', () => {
   expect(mermaid).toContain('BIGINT id PK');
   expect(mermaid).toContain('BIGINT major_id FK');
 });
+
+it('omits rejected inferred relations from Mermaid output', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`teacher\` (
+    \`id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
+  CREATE TABLE \`course\` (
+    \`id\` BIGINT NOT NULL,
+    \`teacher_id\` BIGINT,
+    PRIMARY KEY (\`id\`)
+  );`);
+
+  expect(exportMermaidEr(model)).toContain('course }o--|| teacher');
+
+  const rejectedModel = {
+    ...model,
+    inferredRelations: model.inferredRelations.map((relation) => ({
+      ...relation,
+      status: 'rejected' as const,
+    })),
+  };
+
+  expect(exportMermaidEr(rejectedModel)).not.toContain('course }o--|| teacher');
+});

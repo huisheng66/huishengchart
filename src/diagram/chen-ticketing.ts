@@ -1,4 +1,4 @@
-import type { ErModel } from '../domain/er-model';
+import { activeRelations, type DiagramModel } from '../domain/er-model';
 import type { ConceptualStyle, Point } from './chen-types';
 
 export const TICKETING_TABLE_LABELS: Record<string, string> = {
@@ -223,7 +223,7 @@ export const TICKETING_ATTRIBUTE_ANGLES: Record<string, number[]> = {
   seat_type: [90],
 };
 
-export function detectConceptualStyle(model: ErModel): ConceptualStyle | null {
+export function detectConceptualStyle(model: DiagramModel): ConceptualStyle | null {
   const tableIds = new Set(model.tables.map((table) => table.id));
   const requiredTables = [
     'account',
@@ -242,7 +242,7 @@ export function detectConceptualStyle(model: ErModel): ConceptualStyle | null {
     return null;
   }
 
-  const relations = [...model.relations, ...model.inferredRelations];
+  const relations = activeRelations(model);
   const relationByColumns = new Map(
     relations.map((relation) => [
       `${relation.sourceTableId}.${relation.sourceColumnIds.join(',')}->${relation.targetTableId}`,

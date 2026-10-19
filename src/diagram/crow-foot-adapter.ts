@@ -1,4 +1,4 @@
-import type { ErModel, RelationModel, TableModel } from '../domain/er-model';
+import { activeRelations, type DiagramModel, type RelationModel, type TableModel } from '../domain/er-model';
 import { cardinalityEdgeLabel } from '../domain/display-labels';
 import type { ErEdge, ErNode, FlowGraph } from './react-flow-types';
 
@@ -7,10 +7,14 @@ const TABLE_HEADER_HEIGHT = 56;
 const TABLE_ROW_HEIGHT = 42;
 const TABLE_VERTICAL_GAP = 230;
 
-export function toCrowFootFlow(model: ErModel): FlowGraph {
+export function toCrowFootFlow(model: DiagramModel): FlowGraph {
+  const tableIds = new Set(model.tables.map((table) => table.id));
+
   return {
     nodes: model.tables.map(toTableNode),
-    edges: [...model.relations, ...model.inferredRelations].map(toRelationshipEdge),
+    edges: activeRelations(model)
+      .filter((relation) => tableIds.has(relation.sourceTableId) && tableIds.has(relation.targetTableId))
+      .map(toRelationshipEdge),
   };
 }
 

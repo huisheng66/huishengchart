@@ -1,5 +1,6 @@
 .superpowers/
 .reference-repos/
+.workbuddy-ai/
 node_modules/
 dist/
 build/

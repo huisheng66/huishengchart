@@ -1,9 +1,11 @@
 import { parseMySqlToErModel } from '../sql/mysql-parser';
+import { sampleSql } from '../domain/sample-sql';
 import type { RelationModel } from '../domain/er-model';
 import { toChenFlow } from './chen-adapter';
 import { toCrowFootFlow } from './crow-foot-adapter';
-import { findNodeOverlaps } from './layout';
-import { segmentIntersectsRect, pointInsideRect } from './geometry-utils';
+import { applyElkLayout, findNodeOverlaps } from './layout';
+import { anchorOnChenNode } from './chen-anchors';
+import { segmentIntersectsRect } from './geometry-utils';
 import type { Point, Rect } from './geometry-utils';
 
 const sql = `CREATE TABLE \`major\` (
@@ -155,6 +157,77 @@ CREATE TABLE \`ticket\` (
   CONSTRAINT \`fk_ticket_order\` FOREIGN KEY (\`order_id\`) REFERENCES \`ticket_order\`(\`id\`),
   CONSTRAINT \`fk_ticket_passenger\` FOREIGN KEY (\`passenger_id\`) REFERENCES \`passenger\`(\`id\`),
   CONSTRAINT \`fk_ticket_train_run\` FOREIGN KEY (\`train_run_id\`) REFERENCES \`train_run\`(\`id\`)
+);`;
+
+const commerceSql = `CREATE TABLE \`customer\` (
+  \`id\` BIGINT NOT NULL,
+  \`customer_name\` VARCHAR(80) NOT NULL,
+  \`phone\` VARCHAR(20),
+  \`created_at\` DATETIME,
+  PRIMARY KEY (\`id\`)
+);
+
+CREATE TABLE \`address\` (
+  \`id\` BIGINT NOT NULL,
+  \`customer_id\` BIGINT NOT NULL,
+  \`detail_address\` VARCHAR(200) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_address_customer\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customer\`(\`id\`)
+);
+
+CREATE TABLE \`category_type\` (
+  \`id\` BIGINT NOT NULL,
+  \`category_name\` VARCHAR(80) NOT NULL,
+  PRIMARY KEY (\`id\`)
+);
+
+CREATE TABLE \`product\` (
+  \`id\` BIGINT NOT NULL,
+  \`product_name\` VARCHAR(100) NOT NULL,
+  \`price\` DECIMAL(10, 2) NOT NULL,
+  \`category_type_id\` BIGINT NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_product_category_type\` FOREIGN KEY (\`category_type_id\`) REFERENCES \`category_type\`(\`id\`)
+);
+
+CREATE TABLE \`sales_order\` (
+  \`id\` BIGINT NOT NULL,
+  \`order_no\` VARCHAR(40) NOT NULL,
+  \`customer_id\` BIGINT NOT NULL,
+  \`order_status\` VARCHAR(20) NOT NULL,
+  \`total_amount\` DECIMAL(10, 2),
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_sales_order_customer\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customer\`(\`id\`)
+);
+
+CREATE TABLE \`order_item\` (
+  \`id\` BIGINT NOT NULL,
+  \`order_id\` BIGINT NOT NULL,
+  \`product_id\` BIGINT NOT NULL,
+  \`quantity\` INT NOT NULL,
+  \`unit_price\` DECIMAL(10, 2) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_order_item_order\` FOREIGN KEY (\`order_id\`) REFERENCES \`sales_order\`(\`id\`),
+  CONSTRAINT \`fk_order_item_product\` FOREIGN KEY (\`product_id\`) REFERENCES \`product\`(\`id\`)
+);
+
+CREATE TABLE \`payment_record\` (
+  \`id\` BIGINT NOT NULL,
+  \`order_id\` BIGINT NOT NULL,
+  \`payment_no\` VARCHAR(40) NOT NULL,
+  \`pay_status\` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_payment_order\` FOREIGN KEY (\`order_id\`) REFERENCES \`sales_order\`(\`id\`)
+);
+
+CREATE TABLE \`shipment_record\` (
+  \`id\` BIGINT NOT NULL,
+  \`order_id\` BIGINT NOT NULL,
+  \`address_id\` BIGINT NOT NULL,
+  \`ship_status\` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (\`id\`),
+  CONSTRAINT \`fk_shipment_order\` FOREIGN KEY (\`order_id\`) REFERENCES \`sales_order\`(\`id\`),
+  CONSTRAINT \`fk_shipment_address\` FOREIGN KEY (\`address_id\`) REFERENCES \`address\`(\`id\`)
 );`;
 
 const ticketingCourseSql = `CREATE TABLE \`account\` (
@@ -374,6 +447,25 @@ it('adapts the model to Crow Foot table nodes and bound relationship edges', () 
   );
 });
 
+it('hides rejected inferred relations from both ER views', () => {
+  const model = parseMySqlToErModel(sql);
+  const rejectedModel = {
+    ...model,
+    inferredRelations: model.inferredRelations.map((relation) => ({
+      ...relation,
+      status: 'rejected' as const,
+    })),
+  };
+
+  expect(model.inferredRelations).toHaveLength(1);
+  expect(toCrowFootFlow(rejectedModel).edges.map((edge) => edge.id)).not.toContain(
+    'course:teacher_id->teacher:id'
+  );
+  expect(toChenFlow(rejectedModel).nodes.map((node) => node.id)).not.toContain(
+    'relationship:course:teacher_id->teacher:id'
+  );
+});
+
 it('adapts the model to Chen ER entity, attribute, and relationship nodes', () => {
   const graph = toChenFlow(parseMySqlToErModel(sql));
   const studentEntity = getNode(graph.nodes, 'entity:student');
@@ -452,14 +544,23 @@ it('keeps Chen entity attributes conceptual instead of listing every physical co
   expect(graph.nodes.find((node) => node.id === 'attribute:ticket:created_at')).toBeUndefined();
 });
 
-it('uses Chinese column and table comments as Chen relationship concepts', () => {
+it('uses verbs for academic relationships instead of fk names', () => {
   const graph = toChenFlow(parseMySqlToErModel(commentedRelationSql));
   const relationshipNames = graph.nodes
     .filter((node) => node.type === 'chenRelationship')
     .map((node) => (node.data as { relation?: RelationModel }).relation?.name ?? '');
 
-  expect(relationshipNames).toContain('专业');
+  expect(relationshipNames).toEqual(['属于']);
   expect(relationshipNames).not.toContain('fk_student_major');
+});
+
+it('names the four course relationships with verbs', () => {
+  const graph = toChenFlow(parseMySqlToErModel(sampleSql));
+  const relationshipNames = graph.nodes
+    .filter((node) => node.type === 'chenRelationship')
+    .map((node) => (node.data as { relation?: RelationModel }).relation?.name ?? '');
+
+  expect(relationshipNames).toEqual(expect.arrayContaining(['教导', '教授', '属于', '任教']));
 });
 
 it('uses compact conceptual attributes and role names for dense Chen diagrams', () => {
@@ -474,6 +575,57 @@ it('uses compact conceptual attributes and role names for dense Chen diagrams', 
   expect(trainRelationshipNames).toEqual(expect.arrayContaining(['起点站', '终点站']));
   expect(trainRelationshipNames).not.toContain('fk_train_origin_station');
   expect(graph.edges.map((edge) => edge.data?.label ?? '').filter(Boolean)).toEqual([]);
+});
+
+it('applies generic business labels, relation verbs, and semantic positions outside ticketing schemas', () => {
+  const graph = toChenFlow(parseMySqlToErModel(commerceSql));
+  const entityNames = graph.nodes
+    .filter((node) => node.type === 'chenEntity')
+    .map((node) => (node.data as { table: { name: string } }).table.name);
+  const relationshipNames = graph.nodes
+    .filter((node) => node.type === 'chenRelationship')
+    .map((node) => (node.data as { relation?: RelationModel }).relation?.name ?? '');
+  const customerAttributes = graph.nodes
+    .filter((node) => node.id.startsWith('attribute:customer:'))
+    .map((node) => (node.data as { column: { name: string } }).column.name);
+  const customer = getNode(graph.nodes, 'entity:customer');
+  const order = getNode(graph.nodes, 'entity:sales_order');
+  const product = getNode(graph.nodes, 'entity:product');
+  const category = getNode(graph.nodes, 'entity:category_type');
+
+  expect(entityNames).toEqual(expect.arrayContaining(['客户', '地址', '商品', '订单', '订单明细', '支付记录', '发货记录', '分类类型']));
+  expect(customerAttributes).toEqual(['客户名称', '手机号']);
+  expect(graph.nodes.find((node) => node.id === 'attribute:customer:created_at')).toBeUndefined();
+  expect(relationshipNames).toEqual(expect.arrayContaining(['维护', '分类', '创建', '包含', '购买', '支付', '发货']));
+  expect(relationshipNames.some((name) => name.startsWith('fk_'))).toBe(false);
+  expect(customer.position.x).toBeLessThan(order.position.x);
+  expect(order.position.x).toBeLessThan(product.position.x);
+  expect(product.position.x).toBeLessThan(category.position.x);
+});
+
+it('keeps the default course Chen layout close to the manual arrangement', () => {
+  const graph = toChenFlow(parseMySqlToErModel(sampleSql));
+  const teacher = getNode(graph.nodes, 'entity:teacher');
+  const student = getNode(graph.nodes, 'entity:student');
+  const major = getNode(graph.nodes, 'entity:major');
+  const course = getNode(graph.nodes, 'entity:course');
+  const studentName = getNode(graph.nodes, 'attribute:student:name');
+  const courseId = getNode(graph.nodes, 'attribute:course:id');
+  const majorCollege = getNode(graph.nodes, 'attribute:major:college');
+  const crossedAttributes = findRelationshipEdgesCrossingNodes(graph)
+    .flatMap((crossing) => crossing.crossedNodeIds)
+    .filter((nodeId) => nodeId.startsWith('attribute:'));
+
+  expect(centerOf(teacher).x).toBeCloseTo(centerOf(student).x, 0);
+  expect(centerOf(major).x).toBeCloseTo(centerOf(course).x, 0);
+  expect(centerOf(teacher).x).toBeLessThan(centerOf(major).x);
+  expect(centerOf(studentName).x).toBeGreaterThan(centerOf(student).x);
+  expect(centerOf(studentName).y).toBeGreaterThan(centerOf(student).y);
+  expect(centerOf(courseId).x).toBeLessThan(centerOf(course).x);
+  expect(centerOf(courseId).y).toBeGreaterThan(centerOf(course).y);
+  expect(centerOf(majorCollege).x).toBeLessThan(centerOf(major).x);
+  expect(centerOf(majorCollege).y).toBeGreaterThan(centerOf(major).y);
+  expect(crossedAttributes).toEqual([]);
 });
 
 it('uses the course-style conceptual Chen model for the high-speed ticketing schema', () => {
@@ -551,9 +703,35 @@ it('keeps ticketing Chen relationship edges from crossing unrelated nodes', () =
   const graph = toChenFlow(parseMySqlToErModel(ticketingCourseSql));
 
   const crossings = findRelationshipEdgesCrossingNodes(graph);
-  // Forced diagonal corners may cause at most 2 edge crossings
-  // (acceptable trade-off for correct corner routing)
-  expect(crossings.length).toBeLessThanOrEqual(2);
+  // 动态边界锚点会改变入射角，手工调位的售票图最多允许 3 处穿节点；
+  // 超过说明锚点或布局回退。
+  expect(crossings.length).toBeLessThanOrEqual(3);
+});
+
+it('auto-lays out the dense ticketing Chen diagram without node overlaps', async () => {
+  const graph = toChenFlow(parseMySqlToErModel(ticketingCourseSql));
+  const layouted = await applyElkLayout(graph);
+
+  expect(layouted.nodes.length).toBe(graph.nodes.length);
+  expect(findNodeOverlaps(layouted.nodes)).toEqual([]);
+
+  const nodeById = new Map(layouted.nodes.map((node) => [node.id, node]));
+  const parentByAttribute = new Map(
+    graph.edges
+      .filter((edge) => edge.target.startsWith('attribute:'))
+      .map((edge) => [edge.target, edge.source] as const)
+  );
+
+  expect(parentByAttribute.size).toBeGreaterThan(0);
+  parentByAttribute.forEach((parentId, attributeId) => {
+    const attribute = nodeById.get(attributeId);
+    const parent = nodeById.get(parentId);
+    expect(attribute).toBeDefined();
+    expect(parent).toBeDefined();
+    if (attribute && parent) {
+      expect(centerDistance(attribute, parent)).toBeLessThan(420);
+    }
+  });
 });
 
 function getNode(nodes: ReturnType<typeof toChenFlow>['nodes'], id: string) {
@@ -563,16 +741,17 @@ function getNode(nodes: ReturnType<typeof toChenFlow>['nodes'], id: string) {
 }
 
 function centerDistance(left: ReturnType<typeof getNode>, right: ReturnType<typeof getNode>): number {
-  const leftCenter = {
-    x: left.position.x + (left.width ?? 0) / 2,
-    y: left.position.y + (left.height ?? 0) / 2,
-  };
-  const rightCenter = {
-    x: right.position.x + (right.width ?? 0) / 2,
-    y: right.position.y + (right.height ?? 0) / 2,
-  };
+  const leftCenter = centerOf(left);
+  const rightCenter = centerOf(right);
 
   return Math.hypot(leftCenter.x - rightCenter.x, leftCenter.y - rightCenter.y);
+}
+
+function centerOf(node: ReturnType<typeof getNode>): Point {
+  return {
+    x: node.position.x + (node.width ?? 0) / 2,
+    y: node.position.y + (node.height ?? 0) / 2,
+  };
 }
 
 function graphBounds(nodes: ReturnType<typeof toChenFlow>['nodes']): Rect {
@@ -605,8 +784,7 @@ function findNodesCrossedByEdge(graph: Graph, edgeId: string): string[] {
   expect(source).toBeDefined();
   expect(target).toBeDefined();
 
-  const start = handlePoint(source!, edge!.sourceHandle);
-  const end = handlePoint(target!, edge!.targetHandle);
+  const { start, end } = edgeEndpoints(source!, target!);
 
   return graph.nodes
     .filter((node) => node.id !== edge!.source && node.id !== edge!.target)
@@ -624,31 +802,22 @@ function findRelationshipEdgesCrossingNodes(graph: Graph): Array<{ edgeId: strin
     .filter((result) => result.crossedNodeIds.length > 0);
 }
 
-function handlePoint(node: GraphNode, handleId?: string | null): Point {
-  const rect = nodeRect(node);
-  const center = {
-    x: (rect.left + rect.right) / 2,
-    y: (rect.top + rect.bottom) / 2,
+function edgeEndpoints(source: GraphNode, target: GraphNode) {
+  return {
+    start: anchorOf(source, centerOf(target)),
+    end: anchorOf(target, centerOf(source)),
   };
-  const side = handleId?.split(':')[1];
+}
 
-  if (side === 'left') {
-    return { x: rect.left, y: center.y };
-  }
+function anchorOf(node: GraphNode, toward: Point): Point {
+  const shape =
+    node.type === 'chenAttribute'
+      ? 'attribute'
+      : node.type === 'chenRelationship'
+        ? 'relationship'
+        : 'entity';
 
-  if (side === 'right') {
-    return { x: rect.right, y: center.y };
-  }
-
-  if (side === 'top') {
-    return { x: center.x, y: rect.top };
-  }
-
-  if (side === 'bottom') {
-    return { x: center.x, y: rect.bottom };
-  }
-
-  return center;
+  return anchorOnChenNode(shape, centerOf(node), node.width ?? 0, node.height ?? 0, toward);
 }
 
 function nodeRect(node: GraphNode, padding = 0): Rect {
@@ -659,5 +828,3 @@ function nodeRect(node: GraphNode, padding = 0): Rect {
     bottom: node.position.y + (node.height ?? 0) + padding,
   };
 }
-
-

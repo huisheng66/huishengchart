@@ -1,4 +1,4 @@
-import { ErModel, RelationModel } from '../domain/er-model';
+import { activeRelations, type ErModel, type RelationModel } from '../domain/er-model';
 
 export function exportMermaidEr(model: ErModel): string {
   const lines = ['erDiagram'];
@@ -18,7 +18,7 @@ export function exportMermaidEr(model: ErModel): string {
     lines.push('  }');
   }
 
-  for (const relation of [...model.relations, ...model.inferredRelations]) {
+  for (const relation of activeRelations(model)) {
     lines.push(`  ${relation.sourceTableId} ${mermaidCardinality(relation)} ${relation.targetTableId} : "${relation.name}"`);
   }
 

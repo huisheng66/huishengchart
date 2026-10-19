@@ -65,6 +65,11 @@ it('resolves foreign keys when the referenced table appears later', () => {
 it('creates pending inferred relations for *_id columns without foreign keys', () => {
   const model = parseMySqlToErModel(`${sql}
 
+  CREATE TABLE \`teacher\` (
+    \`id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
   CREATE TABLE \`course\` (
     \`id\` BIGINT NOT NULL,
     \`teacher_id\` BIGINT,
@@ -80,9 +85,57 @@ it('creates pending inferred relations for *_id columns without foreign keys', (
       sourceColumnIds: ['teacher_id'],
       targetTableId: 'teacher',
       targetColumnIds: ['id'],
-      confidence: 0.45,
+      confidence: 0.7,
     }),
   ]);
+});
+
+it('does not infer relations whose target table is missing', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`course\` (
+    \`id\` BIGINT NOT NULL,
+    \`teacher_id\` BIGINT,
+    PRIMARY KEY (\`id\`)
+  );`);
+
+  expect(model.inferredRelations).toEqual([]);
+});
+
+it('uses a single-column primary key when the inferred target has no id column', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`major\` (
+    \`major_no\` VARCHAR(20) NOT NULL,
+    PRIMARY KEY (\`major_no\`)
+  );
+
+  CREATE TABLE \`student\` (
+    \`id\` BIGINT NOT NULL,
+    \`major_id\` BIGINT,
+    PRIMARY KEY (\`id\`)
+  );`);
+
+  expect(model.inferredRelations).toEqual([
+    expect.objectContaining({
+      id: 'student:major_id->major:major_no',
+      targetTableId: 'major',
+      targetColumnIds: ['major_no'],
+      confidence: 0.7,
+    }),
+  ]);
+});
+
+it('does not infer relations when the target has only a composite key', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`major\` (
+    \`college_no\` VARCHAR(20) NOT NULL,
+    \`major_no\` VARCHAR(20) NOT NULL,
+    PRIMARY KEY (\`college_no\`, \`major_no\`)
+  );
+
+  CREATE TABLE \`student\` (
+    \`id\` BIGINT NOT NULL,
+    \`major_id\` BIGINT,
+    PRIMARY KEY (\`id\`)
+  );`);
+
+  expect(model.inferredRelations).toEqual([]);
 });
 
 it('does not infer duplicate relations for declared foreign keys', () => {

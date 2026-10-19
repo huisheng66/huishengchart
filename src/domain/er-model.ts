@@ -60,6 +60,9 @@ export type ErModel = {
   layouts: Record<DiagramView, DiagramLayout>;
 };
 
+/** 图适配器真正需要的数据，不含 layouts，便于按内容缓存图构建结果。 */
+export type DiagramModel = Pick<ErModel, 'tables' | 'relations' | 'inferredRelations'>;
+
 export type RelationKeyInput = Pick<
   RelationModel,
   'sourceTableId' | 'sourceColumnIds' | 'targetTableId' | 'targetColumnIds'
@@ -79,4 +82,17 @@ export function createEmptyErModel(): ErModel {
 
 export function relationKey(input: RelationKeyInput): string {
   return `${input.sourceTableId}:${input.sourceColumnIds.join(',')}->${input.targetTableId}:${input.targetColumnIds.join(',')}`;
+}
+
+/** 图中可见的关系：正式外键 + 未被拒绝的推断关系。 */
+export function activeRelations(model: Pick<ErModel, 'relations' | 'inferredRelations'>): RelationModel[] {
+  return [
+    ...model.relations,
+    ...model.inferredRelations.filter((relation) => relation.status !== 'rejected'),
+  ];
+}
+
+/** 仍待用户确认的推断关系。 */
+export function pendingInferredRelations(model: Pick<ErModel, 'relations' | 'inferredRelations'>): RelationModel[] {
+  return model.inferredRelations.filter((relation) => relation.status === 'pending');
 }

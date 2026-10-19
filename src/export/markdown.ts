@@ -29,6 +29,7 @@ export function exportDataDictionaryMarkdown(model: ErModel): string {
 
 export function exportRelationshipReportMarkdown(model: ErModel): string {
   const lines = ['# 关系说明', '', '## 明确外键关系'];
+  const inferredRelations = model.inferredRelations.filter((relation) => relation.status !== 'rejected');
 
   if (model.relations.length === 0) {
     lines.push('', '无明确外键关系。');
@@ -39,10 +40,10 @@ export function exportRelationshipReportMarkdown(model: ErModel): string {
   }
 
   lines.push('', '## 待确认推断关系');
-  if (model.inferredRelations.length === 0) {
+  if (inferredRelations.length === 0) {
     lines.push('', '无待确认推断关系。');
   } else {
-    for (const relation of model.inferredRelations) {
+    for (const relation of inferredRelations) {
       lines.push('', `${formatRelation(relation)}，置信度 ${Math.round((relation.confidence ?? 0) * 100)}%。`);
     }
   }

@@ -28,3 +28,29 @@ it('exports a deterministic relationship report', () => {
   expect(markdown).toContain('student.major_id -> major.id');
   expect(markdown).toContain('fk_student_major');
 });
+
+it('omits rejected inferred relations from the relationship report', () => {
+  const model = parseMySqlToErModel(`CREATE TABLE \`teacher\` (
+    \`id\` BIGINT NOT NULL,
+    PRIMARY KEY (\`id\`)
+  );
+
+  CREATE TABLE \`course\` (
+    \`id\` BIGINT NOT NULL,
+    \`teacher_id\` BIGINT,
+    PRIMARY KEY (\`id\`)
+  );`);
+
+  expect(exportRelationshipReportMarkdown(model)).toContain('course.teacher_id -> teacher.id');
+
+  const rejectedModel = {
+    ...model,
+    inferredRelations: model.inferredRelations.map((relation) => ({
+      ...relation,
+      status: 'rejected' as const,
+    })),
+  };
+
+  expect(exportRelationshipReportMarkdown(rejectedModel)).not.toContain('course.teacher_id');
+  expect(exportRelationshipReportMarkdown(rejectedModel)).toContain('无待确认推断关系');
+});

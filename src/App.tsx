@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { CanvasView } from './components/CanvasView';
 import { toChenFlow } from './diagram/chen-adapter';
 import { toCrowFootFlow } from './diagram/crow-foot-adapter';
 import { sampleSql } from './domain/sample-sql';
-import type { ErModel } from './domain/er-model';
+import type { DiagramLayout, DiagramView, ErModel } from './domain/er-model';
 import { exportDataDictionaryMarkdown, exportRelationshipReportMarkdown } from './export/markdown';
 import { exportMermaidEr } from './export/mermaid';
 import { parseMySqlSafely } from './sql/parser-result';
@@ -24,8 +24,20 @@ export function App() {
   const [activeTab, setActiveTab] = useState<Tab>('crowFoot');
   const [parseError, setParseError] = useState('');
 
-  const crowFootGraph = useMemo(() => (model ? toCrowFootFlow(model) : null), [model]);
-  const chenGraph = useMemo(() => (model ? toChenFlow(model) : null), [model]);
+  const tables = model?.tables;
+  const relations = model?.relations;
+  const inferredRelations = model?.inferredRelations;
+
+  // 只依赖图内容切片：布局回写会更新 model.layouts，
+  // 但不应该触发两个适配器重新构建整张图。
+  const crowFootGraph = useMemo(
+    () => (tables && relations && inferredRelations ? toCrowFootFlow({ tables, relations, inferredRelations }) : null),
+    [tables, relations, inferredRelations]
+  );
+  const chenGraph = useMemo(
+    () => (tables && relations && inferredRelations ? toChenFlow({ tables, relations, inferredRelations }) : null),
+    [tables, relations, inferredRelations]
+  );
 
   function generate() {
     const result = parseMySqlSafely(sql);
@@ -62,6 +74,10 @@ export function App() {
       };
     });
   }
+
+  const handleLayoutChange = useCallback((view: DiagramView, layout: DiagramLayout) => {
+    setModel((prev) => (prev ? { ...prev, layouts: { ...prev.layouts, [view]: layout } } : prev));
+  }, []);
 
   return (
     <main className="app-shell">
@@ -109,10 +125,26 @@ export function App() {
 
               <section className="tab-panel" role="tabpanel">
                 {activeTab === 'crowFoot' ? (
-                  <CanvasView graph={crowFootGraph} inferredRelations={model.inferredRelations} onAcceptInferred={handleAcceptInferred} onRejectInferred={handleRejectInferred} />
+                  <CanvasView
+                    view="crowFoot"
+                    graph={crowFootGraph}
+                    savedLayout={model.layouts.crowFoot}
+                    inferredRelations={model.inferredRelations}
+                    onLayoutChange={handleLayoutChange}
+                    onAcceptInferred={handleAcceptInferred}
+                    onRejectInferred={handleRejectInferred}
+                  />
                 ) : null}
                 {activeTab === 'chen' ? (
-                  <CanvasView graph={chenGraph} inferredRelations={model.inferredRelations} onAcceptInferred={handleAcceptInferred} onRejectInferred={handleRejectInferred} />
+                  <CanvasView
+                    view="chen"
+                    graph={chenGraph}
+                    savedLayout={model.layouts.chen}
+                    inferredRelations={model.inferredRelations}
+                    onLayoutChange={handleLayoutChange}
+                    onAcceptInferred={handleAcceptInferred}
+                    onRejectInferred={handleRejectInferred}
+                  />
                 ) : null}
                 {activeTab === 'mermaid' ? <pre className="artifact">{exportMermaidEr(model)}</pre> : null}
                 {activeTab === 'dictionary' ? <pre className="artifact">{exportDataDictionaryMarkdown(model)}</pre> : null}

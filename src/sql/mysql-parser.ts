@@ -301,6 +301,7 @@ function markForeignKeyColumns(model: ErModel, relation: RelationModel): void {
 
 function inferRelations(model: ErModel, declaredRelationKeys: Set<string>): RelationModel[] {
   const inferredRelations: RelationModel[] = [];
+  const tableById = new Map(model.tables.map((table) => [table.id, table]));
 
   for (const table of model.tables) {
     for (const column of table.columns) {
@@ -309,11 +310,21 @@ function inferRelations(model: ErModel, declaredRelationKeys: Set<string>): Rela
       }
 
       const targetTableId = column.name.slice(0, -3);
+      const targetTable = tableById.get(targetTableId);
+      if (!targetTable) {
+        continue;
+      }
+
+      const targetColumnId = inferredTargetColumnId(targetTable);
+      if (!targetColumnId) {
+        continue;
+      }
+
       const relationInput = {
         sourceTableId: table.id,
         sourceColumnIds: [column.id],
         targetTableId,
-        targetColumnIds: ['id'],
+        targetColumnIds: [targetColumnId],
       };
       const key = relationKey(relationInput);
 
@@ -327,7 +338,7 @@ function inferRelations(model: ErModel, declaredRelationKeys: Set<string>): Rela
         ...relationInput,
         cardinality: 'many-to-one',
         source: 'rule-inferred',
-        confidence: model.tables.some((candidate) => candidate.id === targetTableId) ? 0.7 : 0.45,
+        confidence: 0.7,
         reason: `Column ${table.name}.${column.name} looks like a foreign key.`,
         status: 'pending',
       });
@@ -335,6 +346,15 @@ function inferRelations(model: ErModel, declaredRelationKeys: Set<string>): Rela
   }
 
   return inferredRelations;
+}
+
+function inferredTargetColumnId(table: TableModel): string | undefined {
+  const idColumn = table.columns.find((column) => column.name.toLowerCase() === 'id');
+  if (idColumn) {
+    return idColumn.id;
+  }
+
+  return table.primaryKey.length === 1 ? table.primaryKey[0] : undefined;
 }
 
 function isColumnDefinition(definition: string): boolean {

@@ -1,7 +1,7 @@
 import type { RelationModel } from '../domain/er-model';
 import type { ErEdge } from './react-flow-types';
-import type { ChenEdgeData, HandleSide, NodePlacement, Point, Rect } from './chen-types';
-import { pointInsideRect, segmentIntersectsRect, hasBoxOverlap } from './geometry-utils';
+import type { ChenEdgeData, HandleSide, NodePlacement, Point } from './chen-types';
+import { segmentIntersectsRect, hasBoxOverlap } from './geometry-utils';
 
 export const ENTITY_WIDTH = 148;
 export const ENTITY_HEIGHT = 56;
@@ -292,36 +292,39 @@ export function createStraightEdge(
   const sourcePlacement = placements.get(source);
   const targetPlacement = placements.get(target);
 
-  let handles: { sourceHandle?: string; targetHandle?: string };
+  const sourceIsRelationship = source.startsWith('relationship:');
+  const targetIsRelationship = target.startsWith('relationship:');
+  const autoHandles =
+    sourcePlacement && targetPlacement
+      ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements, relAxis)
+      : undefined;
 
-  if (forceRelSide && (source.startsWith('relationship:') || target.startsWith('relationship:'))) {
-    // Force the relationship node's handle to the specified side
-    const relHandle = source.startsWith('relationship:')
-      ? `source:${forceRelSide}`
-      : `target:${forceRelSide}`;
-    // Compute the other node's handle normally
-    const autoHandles = sourcePlacement && targetPlacement
-      ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements, relAxis)
-      : { sourceHandle: undefined, targetHandle: undefined };
-    handles = {
-      sourceHandle: source.startsWith('relationship:') ? relHandle : autoHandles.sourceHandle,
-      targetHandle: target.startsWith('relationship:') ? relHandle : autoHandles.targetHandle,
-    };
-  } else {
-    handles = sourcePlacement && targetPlacement
-      ? chooseStraightEdgeHandles(sourcePlacement, targetPlacement, placements, relAxis)
-      : { sourceHandle: undefined, targetHandle: undefined };
-  }
+  // 关系菱形用四角句柄；实体和属性的端点挂在不可见锚点上，
+  // 实际坐标由边组件按边界交点计算。
+  const sourceHandle = sourceIsRelationship
+    ? `source:${forceRelSide ?? sideFromHandle(autoHandles?.sourceHandle) ?? 'left'}`
+    : 'anchor-source';
+  const targetHandle = targetIsRelationship
+    ? `target:${forceRelSide ?? sideFromHandle(autoHandles?.targetHandle) ?? 'left'}`
+    : 'anchor-target';
 
   return {
     id,
     type: 'relationship',
     source,
     target,
-    sourceHandle: handles.sourceHandle,
-    targetHandle: handles.targetHandle,
+    sourceHandle,
+    targetHandle,
     data: { ...data, edgeStyle: 'straight' },
   };
+}
+
+function sideFromHandle(handleId: string | undefined): HandleSide | undefined {
+  const side = handleId?.split(':')[1];
+
+  return side === 'left' || side === 'right' || side === 'top' || side === 'bottom'
+    ? side
+    : undefined;
 }
 
 function chooseStraightEdgeHandles(
@@ -434,5 +437,4 @@ function countNodesCrossedBySegment(
       segmentIntersectsRect(start, end, rectWithClearance(placement))
   ).length;
 }
-
 

@@ -1,4 +1,4 @@
-import type { ColumnModel, ErModel, RelationModel, TableModel } from '../domain/er-model';
+import { activeRelations, type ColumnModel, type DiagramModel, type RelationModel, type TableModel } from '../domain/er-model';
 import { oneOrManyLabel } from '../domain/display-labels';
 import type { ErEdge, ErNode, FlowGraph } from './react-flow-types';
 import type { AssociativeRelationship, ConceptualStyle, HandleSide, NodePlacement } from './chen-types';
@@ -20,7 +20,7 @@ import {
   placeRelationship,
   relationshipNodeId,
 } from './chen-geometry';
-import { detectConceptualStyle } from './chen-ticketing';
+import { buildConceptualStyle } from './conceptual-style';
 
 export {
   type ConceptualStyle,
@@ -67,12 +67,15 @@ const CJK_TEXT = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]/u;
 const DESCRIPTOR_COLUMN_PATTERN = /(^name$|_name$|^title$|_title$|^label$|_label$|^code$|_code$|^no$|_no$|number$|_number$)/i;
 const IMPORTANT_COLUMN_PATTERN = /(status|state|type|amount|price|total|quantity|count|date|time|score|grade|level)/i;
 
-export function toChenFlow(model: ErModel): FlowGraph {
+export function toChenFlow(model: DiagramModel): FlowGraph {
   const nodes: ErNode[] = [];
   const edges: ErEdge[] = [];
   const placements = new Map<string, NodePlacement>();
-  const relationList = [...model.relations, ...model.inferredRelations];
-  const conceptualStyle = detectConceptualStyle(model);
+  const tableIds = new Set(model.tables.map((table) => table.id));
+  const relationList = activeRelations(model).filter(
+    (relation) => tableIds.has(relation.sourceTableId) && tableIds.has(relation.targetTableId)
+  );
+  const conceptualStyle = buildConceptualStyle(model);
   const associativeRelationships = identifyAssociativeRelationships(model.tables, relationList);
   const associativeTableIds = new Set([...associativeRelationships.keys()]);
   const entityTables = model.tables.filter((table) => !associativeTableIds.has(table.id));

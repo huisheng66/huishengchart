@@ -238,7 +238,7 @@ MVP 验收标准如下：
 
 已完成的验证：
 
-- `npm run test`：9 个测试文件，19 个测试通过。
+- `npm run test`：16 个测试文件，92 个测试通过。
 - `npm run lint`：通过。
 - `npm run build`：通过。
 - Chrome 浏览器烟测：生成图、切换标签页、自动整理、Mermaid、数据字典、关系报告、favicon 和控制台均通过检查。

@@ -320,11 +320,12 @@ textarea {
 .chen-relationship span {
   position: relative;
   z-index: 1;
-  max-width: 54px;
+  max-width: 32px;
   overflow-wrap: anywhere;
   text-align: center;
-  font-size: 17px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 .edge-label {
